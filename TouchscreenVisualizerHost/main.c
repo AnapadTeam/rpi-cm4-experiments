@@ -30,7 +30,7 @@ int32_t i2c_write_register_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uin
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
         perror("i2c r/w ioctl");
-	return -1;
+    return -1;
     }
 
     return 0;
@@ -55,7 +55,7 @@ int32_t i2c_write_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, ui
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
         perror("i2c r/w ioctl");
-	return -1;
+    return -1;
     }
 
     return 0;
@@ -83,7 +83,7 @@ int32_t i2c_read_register_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uint
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
         perror("i2c r/w ioctl");
-	return -1;
+    return -1;
     }
 
     return register_byte;
@@ -110,7 +110,7 @@ uint32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, ui
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
         perror("i2c r/w ioctl");
-	return -1;
+    return -1;
     }
 
     return 0;
@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
 
     // uint8_t data[2]={0, 0};
     // i2c_write_register_bytes(fd, 0x5D, 0x814E, data, sizeof(data));
-    
+
     // uint16_t data = i2c_read_register_byte(fd, 0x5D, 0x814E);
     // printf("%x", data);
 
