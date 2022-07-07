@@ -19,7 +19,6 @@ int32_t i2c_write_register_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uin
     i2c_transfer.nmsgs = 1;
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
-        perror("i2c r/w ioctl error");
         return -1;
     }
 
@@ -44,7 +43,6 @@ int32_t i2c_write_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, ui
     i2c_transfer.nmsgs = 1;
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
-        perror("i2c r/w ioctl error");
         return -1;
     }
 
@@ -72,15 +70,14 @@ int32_t i2c_read_register_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uint
     i2c_transfer.nmsgs = SIZE_OF_ARRAY(i2c_msgs);
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
-        perror("i2c r/w ioctl error");
         return -1;
     }
 
     return register_byte;
 }
 
-uint32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uint16_t register_address,
-        const uint8_t* register_data, uint16_t register_data_length) {
+int32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uint16_t register_address,
+        uint8_t* register_data, uint16_t register_data_length) {
     uint8_t register_address_data[2] = {(register_address >> 8) & 0xFF, register_address & 0xFF};
 
     struct i2c_msg i2c_msgs[2];
@@ -100,7 +97,6 @@ uint32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, ui
     i2c_transfer.nmsgs = sizeof(i2c_msgs) / sizeof(i2c_msgs[0]);
 
     if (ioctl(i2c_dev_fd, I2C_RDWR, &i2c_transfer) < 0) {
-        perror("i2c r/w ioctl error");
         return -1;
     }
 

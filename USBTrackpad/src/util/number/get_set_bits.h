@@ -42,7 +42,7 @@ static inline void set_bit(uint32_t* to_set, uint8_t bit, uint8_t index) {
  * @param to_get a pointer to the bits to get
  * @param msb the MSB (0 - 31) (inclusive)
  * @param lsb the LSB (0 - 31) (inclusive)
- * @retval the bits
+ * @return the bits
  */
 static inline uint32_t get_bits(const uint32_t* to_get, uint8_t msb, uint8_t lsb) {
     uint32_t mask = (~0 << (msb + 1)) | ~(~0 << lsb);
@@ -53,7 +53,7 @@ static inline uint32_t get_bits(const uint32_t* to_get, uint8_t msb, uint8_t lsb
  * Gets the bit inside 'to_get' at the bits at the index
  * @param to_get a pointer to the bits to get
  * @param index the index (0 - 31)
- * @retval the bit
+ * @return the bit
  */
 static inline uint32_t get_bit(uint32_t* to_get, uint8_t index) {
     return get_bits(to_get, index, index);

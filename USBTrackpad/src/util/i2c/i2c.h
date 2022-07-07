@@ -59,8 +59,8 @@ int32_t i2c_read_register_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uint
  * @param register_data_length the length of 'register_data'
  * @return a negative number if an error occurred or zero if successful
  */
-uint32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uint16_t register_address,
-        const uint8_t* register_data, uint16_t register_data_length);
+int32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uint16_t register_address,
+        uint8_t* register_data, uint16_t register_data_length);
 
 #ifdef __cplusplus
 }
