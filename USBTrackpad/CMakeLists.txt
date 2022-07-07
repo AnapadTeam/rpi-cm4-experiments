@@ -10,4 +10,4 @@ add_executable(USBTrackpad src/main.c
         src/util/number/get_set_bits.h
         src/util/i2c/i2c.c
         src/util/i2c/i2c.h
-        src/util/lang/lang.h)
+        src/util/lang/lang.h src/util/file/file.c src/util/file/file.h)
