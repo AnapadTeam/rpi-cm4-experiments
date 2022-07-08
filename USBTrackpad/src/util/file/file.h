@@ -32,6 +32,11 @@ extern "C" {
  */
 int32_t make_path(char* the_path);
 
+/**
+ * Removes a directory path (directory must be empty or virtual).
+ * @param the_path a string of the path to remove
+ * @return a negative number if an error occurred or zero if successful
+ */
 int32_t remove_path(char* the_path);
 
 /**

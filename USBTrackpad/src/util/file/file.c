@@ -39,7 +39,7 @@ size_t make_file_with_binary_contents(char* file_path, void* binary_content, uin
     int32_t fd = open(file_path, O_RDWR);
     if (fd < 0)
         return -1;
-    int64_t n = write(fd, binary_content, binary_content_length);
+    size_t n = write(fd, binary_content, binary_content_length);
     close(fd);
     return n;
 }
