@@ -18,15 +18,15 @@
 #define I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA (uint16_t) 0x814F
 
 #define USB_GADGET_DEVICE_PATH "/dev/hidg0"
-#define USB_GADGET_CONFIG_PATH "/sys/kernel/config/usb_gadget/"
+#define USB_GADGET_KERNEL_CONFIG_PATH "/sys/kernel/config/usb_gadget/"
 #define USB_GADGET_NAME "trackpad/"
-#define USB_GADGET_TRACKPAD_CONFIG_PATH USB_GADGET_CONFIG_PATH USB_GADGET_NAME
-#define USB_GADGET_TRACKPAD_STRINGS_PATH USB_GADGET_TRACKPAD_CONFIG_PATH "strings/0x409/"
-#define USB_GADGET_TRACKPAD_CONFIGURATION_PATH USB_GADGET_TRACKPAD_CONFIG_PATH "configs/c.1/"
+#define USB_GADGET_TRACKPAD_PATH USB_GADGET_KERNEL_CONFIG_PATH USB_GADGET_NAME
+#define USB_GADGET_TRACKPAD_STRINGS_PATH USB_GADGET_TRACKPAD_PATH "strings/0x409/"
+#define USB_GADGET_TRACKPAD_CONFIGURATION_PATH USB_GADGET_TRACKPAD_PATH "configs/c.1/"
 #define USB_GADGET_TRACKPAD_CONFIGURATION_STRINGS_PATH USB_GADGET_TRACKPAD_CONFIGURATION_PATH "strings/0x409/"
-#define USB_GADGET_TRACKPAD_FUNCTIONS_PATH USB_GADGET_TRACKPAD_CONFIG_PATH "functions/hid.0"
-#define USB_DEVICE_CONTROLLER_NAME "49000000.usb-otg" // TODO
-#define USB_GADGET_TRACKPAD_REPORT_LENGTH "3"
+#define USB_GADGET_TRACKPAD_FUNCTIONS_NAME "hid.0"
+#define USB_GADGET_TRACKPAD_FUNCTIONS_PATH USB_GADGET_TRACKPAD_PATH "functions/" USB_GADGET_TRACKPAD_FUNCTIONS_NAME "/"
+#define USB_DEVICE_CONTROLLER_NAME "fe980000.usb" // This is the UDC specifically for the RPi CM4
 
 /**
  * The USB HID mouse/trackpad report struct.
@@ -66,7 +66,7 @@ static uint8_t usb_gadget_trackpad_report_descriptor[] = {
         0xc0, //         END_COLLECTION
         0xc0 //        END_COLLECTION
 };
-static size_t usb_hid_device_file_descriptor = -1;
+static int32_t usb_hid_device_file = -1;
 
 static volatile sig_atomic_t run_loop = 1;
 
@@ -77,38 +77,41 @@ void signal_interrupt_handler(int32_t _) {
 
 int32_t usb_gadget_trackpad_create() {
     printf("Creating the USB HID mouse gadget...\n");
-    if (make_path(USB_GADGET_TRACKPAD_CONFIG_PATH)) {
-        perror("Could not create USB Gadget Trackpad configfs path");
-        return -1;
+
+    CHECK(create_directory_path(USB_GADGET_TRACKPAD_PATH));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "idVendor", "0x1d6b")); // Linux Foundation
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "idProduct",
+            "0x0104")); // Multifunction Composite Gadget
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "bcdDevice", "0x0100")); // v1.0.0
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "bcdUSB", "0x0200")); // USB2
+
+    CHECK(create_directory_path(USB_GADGET_TRACKPAD_STRINGS_PATH));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_STRINGS_PATH "serialnumber", "a1b2c3d4e5"));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_STRINGS_PATH "manufacturer", "Anapad Team"));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_STRINGS_PATH "product", "Anapad"));
+
+    CHECK(create_directory_path(USB_GADGET_TRACKPAD_CONFIGURATION_STRINGS_PATH));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIGURATION_STRINGS_PATH "configuration",
+            "Anapad Config"));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIGURATION_PATH "MaxPower", "250")); // 250mA
+
+    CHECK(create_directory_path(USB_GADGET_TRACKPAD_FUNCTIONS_PATH));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "protocol", "2")); // 1=keyboard, 2=mouse
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "subclass", "1")); // 0 = no boot, 1 = boot
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_length", "3"));
+    CHECK(write_file_with_binary_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_desc",
+            usb_gadget_trackpad_report_descriptor, SIZE_OF_ARRAY(usb_gadget_trackpad_report_descriptor)));
+    if (symlink(USB_GADGET_TRACKPAD_FUNCTIONS_PATH,
+                USB_GADGET_TRACKPAD_CONFIGURATION_PATH USB_GADGET_TRACKPAD_FUNCTIONS_NAME)) {
+        perror("Could not create symlink " USB_GADGET_TRACKPAD_CONFIGURATION_PATH USB_GADGET_TRACKPAD_FUNCTIONS_NAME
+               " -> " USB_GADGET_TRACKPAD_FUNCTIONS_PATH);
+        return errno;
     }
 
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "idVendor", "0x1d6b"); // Linux Foundation
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "idProduct",
-            "0x0104"); // Multifunction Composite Gadget
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "bcdDevice", "0x0100"); // v1.0.0
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "bcdUSB", "0x0200"); // USB2
+    // Enable the gadget
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "UDC", USB_DEVICE_CONTROLLER_NAME));
 
-    make_path(USB_GADGET_TRACKPAD_STRINGS_PATH);
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "serialnumber", "a1b2c3d4e5");
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "manufacturer", "Anapad Team");
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "product", "Anapad");
-
-    make_path(USB_GADGET_TRACKPAD_CONFIGURATION_STRINGS_PATH);
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIGURATION_STRINGS_PATH, "Anapad Configuration");
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIGURATION_PATH "MaxPower", "250"); // 250mA
-
-    make_path(USB_GADGET_TRACKPAD_FUNCTIONS_PATH);
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "protocol", "2"); // 1 = keyboard, 2 = mouse
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "subclass", "1"); // 0 = no boot, 1 = boot
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_length",
-            USB_GADGET_TRACKPAD_REPORT_LENGTH);
-    make_file_with_binary_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_desc",
-            usb_gadget_trackpad_report_descriptor, SIZE_OF_ARRAY(usb_gadget_trackpad_report_descriptor));
-    symlink(USB_GADGET_TRACKPAD_FUNCTIONS_PATH, USB_GADGET_TRACKPAD_CONFIGURATION_PATH);
-
-    make_file_with_string_contents(USB_GADGET_TRACKPAD_CONFIG_PATH "UDC", USB_DEVICE_CONTROLLER_NAME);
-
-    if ((usb_hid_device_file_descriptor = open(USB_GADGET_DEVICE_PATH, O_RDWR, 0666)) <= -1) {
+    if ((usb_hid_device_file = open(USB_GADGET_DEVICE_PATH, O_RDWR, 0666)) == -1) {
         perror(USB_GADGET_DEVICE_PATH);
         return -1;
     }
@@ -118,15 +121,22 @@ int32_t usb_gadget_trackpad_create() {
 }
 
 int32_t usb_gadget_trackpad_remove() {
-    if (remove_path(USB_GADGET_TRACKPAD_CONFIG_PATH)) {
-        perror("");
-        return -1;
-    }
+    // None of the following calls need error checking because unsuccessful calls can be ignored here.
+
+    // Disable the gadget
+    write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "UDC", "");
+
+    // Remove directories/files to clean up as needed
+    remove_file(USB_GADGET_TRACKPAD_CONFIGURATION_PATH USB_GADGET_TRACKPAD_FUNCTIONS_NAME);
+    remove_directory(USB_GADGET_TRACKPAD_CONFIGURATION_STRINGS_PATH);
+    remove_directory(USB_GADGET_TRACKPAD_CONFIGURATION_PATH);
+    remove_directory(USB_GADGET_TRACKPAD_FUNCTIONS_PATH);
+    remove_directory(USB_GADGET_TRACKPAD_STRINGS_PATH);
+    remove_directory(USB_GADGET_TRACKPAD_PATH);
 }
 
 size_t usb_gadget_trackpad_write_report(usb_gadget_trackpad_report_t* usb_gadget_trackpad_report) {
-    return write((int32_t) usb_hid_device_file_descriptor, usb_gadget_trackpad_report,
-            sizeof(usb_gadget_trackpad_report_t));
+    return write(usb_hid_device_file, usb_gadget_trackpad_report, sizeof(usb_gadget_trackpad_report_t));
 }
 
 int32_t trackpad_control_loop() {
@@ -191,13 +201,18 @@ int32_t trackpad_control_loop() {
                 touchscreen_touch_last_x = (int16_t) x;
                 touchscreen_touch_last_y = (int16_t) y;
             } else {
-                int8_t delta_x = (int8_t) (x - touchscreen_touch_last_x);
-                int8_t delta_y = (int8_t) (y - touchscreen_touch_last_y);
+                int8_t delta_x = (int8_t) ((double) (x - touchscreen_touch_last_x) * 1.75);
+                int8_t delta_y = (int8_t) ((double) (y - touchscreen_touch_last_y) * 1.75);
 
                 usb_gadget_trackpad_report.buttons = 0;
                 usb_gadget_trackpad_report.x = delta_x;
                 usb_gadget_trackpad_report.y = delta_y;
                 usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
+                printf("Touchpad touch data sent: buttons=%x x=%d y=%d\n", usb_gadget_trackpad_report.buttons,
+                        usb_gadget_trackpad_report.x, usb_gadget_trackpad_report.y);
+
+                touchscreen_touch_last_x = (int16_t) x;
+                touchscreen_touch_last_y = (int16_t) y;
             }
         } else {
             touchscreen_touch_last_x = -1;
@@ -213,17 +228,19 @@ after_run_loop:
 
     close(i2c_dev_fd);
     printf("Closed I2C device.\n");
-
-    usb_gadget_trackpad_remove();
-    printf("Removed USB HID mouse gadget.\n");
     return 0;
 }
 
 int32_t main() {
     if (usb_gadget_trackpad_create()) {
+        usb_gadget_trackpad_remove();
         return -1;
     }
+
     if (trackpad_control_loop()) {
         return -1;
     }
+
+    usb_gadget_trackpad_remove();
+    printf("Removed USB HID mouse gadget.\n");
 }

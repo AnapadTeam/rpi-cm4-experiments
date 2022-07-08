@@ -16,6 +16,19 @@ extern "C" {
  */
 #define SIZE_OF_ARRAY(x) (sizeof(x) / sizeof((x)[0]))
 
+/**
+ * Calls the given function argument and if it returns a negative value, an error message will be printed and will
+ * return the return value.
+ */
+#define CHECK(x)                                                                                                       \
+    do {                                                                                                               \
+        int32_t return_value = (int32_t) (x);                                                                          \
+        if (return_value < 0) {                                                                                        \
+            fprintf(stderr, "Runtime error: %s returned %d at %s:%d\n", #x, return_value, __FILE__, __LINE__);         \
+            return return_value;                                                                                       \
+        }                                                                                                              \
+    } while (0)
+
 #ifdef __cplusplus
 }
 #endif
