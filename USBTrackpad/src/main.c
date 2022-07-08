@@ -167,6 +167,8 @@ int32_t trackpad_control_loop() {
     usb_gadget_trackpad_report_t usb_gadget_trackpad_report;
     int16_t touchscreen_touch_last_x = -1;
     int16_t touchscreen_touch_last_y = -1;
+    uint8_t touchscreen_touch_down_delta_non_zero = 0;
+    uint8_t last_number_of_touches = 0;
     while (run_loop) {
         // Wait until touchscreen data is ready to be read
         uint8_t coordinate_status_register = 0;
@@ -201,8 +203,14 @@ int32_t trackpad_control_loop() {
                 touchscreen_touch_last_x = (int16_t) x;
                 touchscreen_touch_last_y = (int16_t) y;
             } else {
-                int8_t delta_x = (int8_t) ((double) (x - touchscreen_touch_last_x) * 1.75);
-                int8_t delta_y = (int8_t) ((double) (y - touchscreen_touch_last_y) * 1.75);
+                int8_t delta_x = (int8_t) ((x - touchscreen_touch_last_x) * 2);
+                int8_t delta_y = (int8_t) ((y - touchscreen_touch_last_y) * 2);
+                touchscreen_touch_last_x = (int16_t) x;
+                touchscreen_touch_last_y = (int16_t) y;
+
+                if (!touchscreen_touch_down_delta_non_zero && delta_x != 0 && delta_y != 0) {
+                    touchscreen_touch_down_delta_non_zero = 1;
+                }
 
                 usb_gadget_trackpad_report.buttons = 0;
                 usb_gadget_trackpad_report.x = delta_x;
@@ -210,19 +218,26 @@ int32_t trackpad_control_loop() {
                 usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
                 printf("Touchpad touch data sent: buttons=%x x=%d y=%d\n", usb_gadget_trackpad_report.buttons,
                         usb_gadget_trackpad_report.x, usb_gadget_trackpad_report.y);
-
-                touchscreen_touch_last_x = (int16_t) x;
-                touchscreen_touch_last_y = (int16_t) y;
             }
         } else {
             touchscreen_touch_last_x = -1;
             touchscreen_touch_last_y = -1;
-
-            usb_gadget_trackpad_report.buttons = 0;
             usb_gadget_trackpad_report.x = 0;
             usb_gadget_trackpad_report.y = 0;
+
+            if (touchscreen_touch_down_delta_non_zero) {
+                touchscreen_touch_down_delta_non_zero = 0;
+                usb_gadget_trackpad_report.buttons = 0;
+            } else if (last_number_of_touches != 0) {
+                usb_gadget_trackpad_report.buttons = 0x01;
+                usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
+                usb_gadget_trackpad_report.buttons = 0;
+            }
+
             usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
         }
+
+        last_number_of_touches = number_of_touches;
     }
 after_run_loop:
 
