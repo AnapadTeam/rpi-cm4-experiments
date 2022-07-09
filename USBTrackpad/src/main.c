@@ -169,7 +169,8 @@ int32_t trackpad_control_loop() {
     int16_t touchscreen_touch_last_x = -1;
     int16_t touchscreen_touch_last_y = -1;
     uint8_t touchscreen_touch_down_delta_non_zero = 0;
-    uint8_t last_number_of_touches = 0;
+    uint8_t touchscreen_multi_touched_down = 0;
+    uint8_t touchscreen_last_touch_count = 0;
     while (run_loop) {
         // Wait until touchscreen data is ready to be read
         uint8_t coordinate_status_register = 0;
@@ -194,6 +195,10 @@ int32_t trackpad_control_loop() {
         uint8_t number_of_touches = get_bits((uint32_t*) &coordinate_status_register, 3, 0);
         i2c_read_register_bytes(i2c_dev_fd, I2C_GT9110_ADDRESS_SLAVE, I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA,
                 touchscreen_coordinate_data, sizeof(touchscreen_coordinate_data));
+
+        if (!touchscreen_multi_touched_down) {
+            touchscreen_multi_touched_down = number_of_touches >= 2;
+        }
 
         if (number_of_touches > 0) {
             uint8_t* first_touch_coordinate_data = touchscreen_coordinate_data;
@@ -257,8 +262,15 @@ int32_t trackpad_control_loop() {
             if (touchscreen_touch_down_delta_non_zero) {
                 touchscreen_touch_down_delta_non_zero = 0;
                 usb_gadget_trackpad_report.buttons = 0;
-            } else if (last_number_of_touches != 0) {
-                usb_gadget_trackpad_report.buttons = 0x01;
+            } else if (touchscreen_last_touch_count != 0) {
+                if (touchscreen_multi_touched_down) {
+                    usb_gadget_trackpad_report.buttons = 0x01 << 1;
+                    touchscreen_multi_touched_down = 0;
+                    printf("Touchpad right-click sent.\n");
+                } else {
+                    usb_gadget_trackpad_report.buttons = 0x01;
+                    printf("Touchpad left-click sent.\n");
+                }
                 usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
                 usb_gadget_trackpad_report.buttons = 0;
             }
@@ -266,7 +278,7 @@ int32_t trackpad_control_loop() {
             usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
         }
 
-        last_number_of_touches = number_of_touches;
+        touchscreen_last_touch_count = number_of_touches;
     }
 after_run_loop:
 
