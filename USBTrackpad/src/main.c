@@ -8,6 +8,7 @@
 #include "util/lang/lang.h"
 #include "util/number/get_set_bits.h"
 #include <fcntl.h>
+#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -198,33 +199,61 @@ int32_t trackpad_control_loop() {
             uint8_t* first_touch_coordinate_data = touchscreen_coordinate_data;
             uint16_t x = (first_touch_coordinate_data[2] << 8) | first_touch_coordinate_data[1];
             uint16_t y = (first_touch_coordinate_data[4] << 8) | first_touch_coordinate_data[3];
+            printf("Touchscreen touch 0: x=%d y=%d\n", x, y);
 
             if (touchscreen_touch_last_x == -1 || touchscreen_touch_last_y == -1) {
+                // Set last touch coordinates to current touch coordinates
                 touchscreen_touch_last_x = (int16_t) x;
                 touchscreen_touch_last_y = (int16_t) y;
             } else {
-                int8_t delta_x = (int8_t) ((x - touchscreen_touch_last_x) * 2);
-                int8_t delta_y = (int8_t) ((y - touchscreen_touch_last_y) * 2);
-                touchscreen_touch_last_x = (int16_t) x;
-                touchscreen_touch_last_y = (int16_t) y;
+                // Calculate deltas
+                int32_t delta_x = (int32_t) round((double) (x - touchscreen_touch_last_x) * 2.5);
+                int32_t delta_y = (int32_t) round((double) (y - touchscreen_touch_last_y) * 2.5);
 
+                // Clamp deltas
+                if (delta_x > INT8_MAX) {
+                    delta_x = INT8_MAX;
+                }
+                if (delta_x < INT8_MIN) {
+                    delta_x = INT8_MIN;
+                }
+                if (delta_y > INT8_MAX) {
+                    delta_y = INT8_MAX;
+                }
+                if (delta_y < INT8_MIN) {
+                    delta_y = INT8_MIN;
+                }
+
+                // Write "trackpad" report
+                usb_gadget_trackpad_report.buttons = 0;
+                usb_gadget_trackpad_report.x = (int8_t) delta_x;
+                usb_gadget_trackpad_report.y = (int8_t) delta_y;
+                usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
+
+                // Set last touch coordinates to current touch coordinates
+                if (delta_x != 0) {
+                    touchscreen_touch_last_x = (int16_t) x;
+                }
+                if (delta_y != 0) {
+                    touchscreen_touch_last_y = (int16_t) y;
+                }
+
+                // Trigger non-zero delta touch as needed
                 if (!touchscreen_touch_down_delta_non_zero && delta_x != 0 && delta_y != 0) {
                     touchscreen_touch_down_delta_non_zero = 1;
                 }
 
-                usb_gadget_trackpad_report.buttons = 0;
-                usb_gadget_trackpad_report.x = delta_x;
-                usb_gadget_trackpad_report.y = delta_y;
-                usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
                 printf("Touchpad touch data sent: buttons=%x x=%d y=%d\n", usb_gadget_trackpad_report.buttons,
                         usb_gadget_trackpad_report.x, usb_gadget_trackpad_report.y);
             }
         } else {
+            // Reset variables
             touchscreen_touch_last_x = -1;
             touchscreen_touch_last_y = -1;
             usb_gadget_trackpad_report.x = 0;
             usb_gadget_trackpad_report.y = 0;
 
+            // Handle non-zero delta touch down/up (aka left-button click)
             if (touchscreen_touch_down_delta_non_zero) {
                 touchscreen_touch_down_delta_non_zero = 0;
                 usb_gadget_trackpad_report.buttons = 0;

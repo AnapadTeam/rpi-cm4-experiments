@@ -11,3 +11,6 @@ add_executable(USBTrackpad src/main.c
         src/util/i2c/i2c.c
         src/util/i2c/i2c.h
         src/util/lang/lang.h src/util/file/file.c src/util/file/file.h)
+
+# Adds the math libraries to the linker
+target_link_libraries(USBTrackpad PRIVATE m)
