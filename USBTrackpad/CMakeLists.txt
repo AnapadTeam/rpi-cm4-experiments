@@ -13,7 +13,8 @@ add_executable(USBTrackpad src/main.c
         src/util/lang/lang.h
         src/util/file/file.c
         src/util/file/file.h
-        src/util/number/number_util.h)
+        src/util/number/number_util.h
+        src/gt9110_config.c src/gt9110_config.h)
 
 # Add math libraries to the linker
 target_link_libraries(USBTrackpad PRIVATE m)

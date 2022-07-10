@@ -3,6 +3,7 @@
  * @brief The entry point of the application.
  */
 
+#include "gt9110_config.h"
 #include "util/file/file.h"
 #include "util/i2c/i2c.h"
 #include "util/lang/lang.h"
@@ -40,7 +41,7 @@ typedef struct {
     int8_t wheel;
 } usb_gadget_trackpad_report_t;
 
-// Created using https://eleccelerator.com/usbdescreqparser/ and https://shorturl.at/hU034 (remove wake feature though)
+// Created using https://eleccelerator.com/usbdescreqparser/ and https://shorturl.at/hU034 (removed wake feature though)
 static uint8_t usb_gadget_trackpad_report_descriptor[] = {
         0x05, 0x01, // Usage Page (Generic Desktop)
         0x09, 0x02, // Usage (Mouse)
@@ -143,6 +144,26 @@ size_t usb_gadget_trackpad_write_report(usb_gadget_trackpad_report_t* usb_gadget
     return write(usb_hid_device_file, usb_gadget_trackpad_report, sizeof(usb_gadget_trackpad_report_t));
 }
 
+int32_t write_gt9110_configuration() {
+    printf("Opening I2C device...\n");
+    int32_t i2c_dev_fd = open("/dev/i2c-1", O_RDWR);
+    if (i2c_dev_fd < 0) {
+        perror("Failed to open I2C device");
+        return 1;
+    }
+    printf("Opened I2C device.\n");
+
+    uint32_t code = write_configuration_data(i2c_dev_fd, I2C_GT9110_ADDRESS_SLAVE, gt9110_config);
+    if (code) {
+        printf("Could not write GT9110 configuration!\n");
+    } else {
+        printf("Wrote GT9110 configuration.\n");
+    }
+
+    close(i2c_dev_fd);
+    printf("Closed I2C device.\n");
+}
+
 int32_t trackpad_control_loop() {
     printf("Opening I2C device...\n");
     int32_t i2c_dev_fd = open("/dev/i2c-1", O_RDWR);
@@ -221,10 +242,10 @@ int32_t trackpad_control_loop() {
                 int32_t multiplied_delta_y = (int32_t) round((double) delta_y * 2.25);
 
                 // Clamp deltas
-                CLAMP(delta_x, INT8_MIN, INT8_MAX);
-                CLAMP(delta_y, INT8_MIN, INT8_MAX);
-                CLAMP(multiplied_delta_x, INT8_MIN, INT8_MAX);
-                CLAMP(multiplied_delta_y, INT8_MIN, INT8_MAX);
+                delta_x = CLAMP(delta_x, INT8_MIN, INT8_MAX);
+                delta_y = CLAMP(delta_y, INT8_MIN, INT8_MAX);
+                multiplied_delta_x = CLAMP(multiplied_delta_x, INT8_MIN, INT8_MAX);
+                multiplied_delta_y = CLAMP(multiplied_delta_y, INT8_MIN, INT8_MAX);
 
                 // Write "trackpad" report
                 if (number_of_touches == 2) {
@@ -296,6 +317,8 @@ after_run_loop:
 }
 
 int32_t main() {
+    // write_gt9110_configuration();
+
     if (usb_gadget_trackpad_create()) {
         usb_gadget_trackpad_remove();
         return -1;
