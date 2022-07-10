@@ -7,6 +7,7 @@
 #include "util/i2c/i2c.h"
 #include "util/lang/lang.h"
 #include "util/number/get_set_bits.h"
+#include "util/number/number_util.h"
 #include <fcntl.h>
 #include <math.h>
 #include <signal.h>
@@ -36,36 +37,38 @@ typedef struct {
     uint8_t buttons;
     int8_t x;
     int8_t y;
+    int8_t wheel;
 } usb_gadget_trackpad_report_t;
 
-// From: https://eleccelerator.com/tutorial-about-usb-hid-report-descriptors/
+// Created using https://eleccelerator.com/usbdescreqparser/ and https://shorturl.at/hU034 (remove wake feature though)
 static uint8_t usb_gadget_trackpad_report_descriptor[] = {
-        0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-        0x09, 0x02, // USAGE (Mouse)
-        0xa1, 0x01, // COLLECTION (Application)
-        0x09, 0x01, //   USAGE (Pointer)
-        0xa1, 0x00, //   COLLECTION (Physical)
-        0x05, 0x09, //     USAGE_PAGE (Button)
-        0x19, 0x01, //     USAGE_MINIMUM (Button 1)
-        0x29, 0x03, //     USAGE_MAXIMUM (Button 3)
-        0x15, 0x00, //     LOGICAL_MINIMUM (0)
-        0x25, 0x01, //     LOGICAL_MAXIMUM (1)
-        0x95, 0x03, //     REPORT_COUNT (3)
-        0x75, 0x01, //     REPORT_SIZE (1)
-        0x81, 0x02, //     INPUT (Data,Var,Abs)
-        0x95, 0x01, //     REPORT_COUNT (1)
-        0x75, 0x05, //     REPORT_SIZE (5)
-        0x81, 0x03, //     INPUT (Cnst,Var,Abs)
-        0x05, 0x01, //     USAGE_PAGE (Generic Desktop)
-        0x09, 0x30, //     USAGE (X)
-        0x09, 0x31, //     USAGE (Y)
-        0x15, 0x81, //     LOGICAL_MINIMUM (-127)
-        0x25, 0x7f, //     LOGICAL_MAXIMUM (127)
-        0x75, 0x08, //     REPORT_SIZE (8)
-        0x95, 0x02, //     REPORT_COUNT (2)
-        0x81, 0x06, //     INPUT (Data,Var,Rel)
-        0xc0, //         END_COLLECTION
-        0xc0 //        END_COLLECTION
+        0x05, 0x01, // Usage Page (Generic Desktop)
+        0x09, 0x02, // Usage (Mouse)
+        0xa1, 0x01, // Collection (Application)
+        0x09, 0x01, //   Usage (Pointer)
+        0xa1, 0x00, //   Collection (Physical)
+        0x05, 0x09, //     Usage Page (Button)
+        0x19, 0x01, //     Usage Minimum (0x01)
+        0x29, 0x03, //     Usage Maximum (0x03)
+        0x15, 0x00, //     Logical Minimum (0)
+        0x25, 0x01, //     Logical Maximum (1)
+        0x95, 0x03, //     Report Count (3)
+        0x75, 0x01, //     Report Size (1)
+        0x81, 0x02, //     Input (Data,Var,Abs)
+        0x95, 0x01, //     Report Count (1)
+        0x75, 0x05, //     Report Size (5)
+        0x81, 0x03, //     Input (Const,Array,Abs)
+        0x05, 0x01, //     Usage Page (Generic Desktop)
+        0x09, 0x30, //     Usage (X)
+        0x09, 0x31, //     Usage (Y)
+        0x09, 0x38, //     Usage (Wheel)
+        0x15, 0x81, //     Logical Minimum (-127)
+        0x25, 0x7f, //     Logical Maximum (127)
+        0x75, 0x08, //     Report Size (8)
+        0x95, 0x03, //     Report Count (3)
+        0x81, 0x06, //     Input (Data,Var,Rel)
+        0xc0, //         End Collection
+        0xc0 //        End Collection
 };
 static int32_t usb_hid_device_file = -1;
 
@@ -99,7 +102,7 @@ int32_t usb_gadget_trackpad_create() {
     CHECK(create_directory_path(USB_GADGET_TRACKPAD_FUNCTIONS_PATH));
     CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "protocol", "2")); // 1=keyboard, 2=mouse
     CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "subclass", "1")); // 0 = no boot, 1 = boot
-    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_length", "3"));
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_length", "4"));
     CHECK(write_file_with_binary_contents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH "report_desc",
             usb_gadget_trackpad_report_descriptor, SIZE_OF_ARRAY(usb_gadget_trackpad_report_descriptor)));
     if (symlink(USB_GADGET_TRACKPAD_FUNCTIONS_PATH,
@@ -212,34 +215,36 @@ int32_t trackpad_control_loop() {
                 touchscreen_touch_last_y = (int16_t) y;
             } else {
                 // Calculate deltas
-                int32_t delta_x = (int32_t) round((double) (x - touchscreen_touch_last_x) * 2.5);
-                int32_t delta_y = (int32_t) round((double) (y - touchscreen_touch_last_y) * 2.5);
+                int32_t delta_x = x - touchscreen_touch_last_x;
+                int32_t delta_y = y - touchscreen_touch_last_y;
+                int32_t multiplied_delta_x = (int32_t) round((double) delta_x * 2.25);
+                int32_t multiplied_delta_y = (int32_t) round((double) delta_y * 2.25);
 
                 // Clamp deltas
-                if (delta_x > INT8_MAX) {
-                    delta_x = INT8_MAX;
-                }
-                if (delta_x < INT8_MIN) {
-                    delta_x = INT8_MIN;
-                }
-                if (delta_y > INT8_MAX) {
-                    delta_y = INT8_MAX;
-                }
-                if (delta_y < INT8_MIN) {
-                    delta_y = INT8_MIN;
-                }
+                CLAMP(delta_x, INT8_MIN, INT8_MAX);
+                CLAMP(delta_y, INT8_MIN, INT8_MAX);
+                CLAMP(multiplied_delta_x, INT8_MIN, INT8_MAX);
+                CLAMP(multiplied_delta_y, INT8_MIN, INT8_MAX);
 
                 // Write "trackpad" report
-                usb_gadget_trackpad_report.buttons = 0;
-                usb_gadget_trackpad_report.x = (int8_t) delta_x;
-                usb_gadget_trackpad_report.y = (int8_t) delta_y;
+                if (number_of_touches == 2) {
+                    usb_gadget_trackpad_report.buttons = 0;
+                    usb_gadget_trackpad_report.x = 0;
+                    usb_gadget_trackpad_report.y = 0;
+                    usb_gadget_trackpad_report.wheel = (int8_t) -CLAMP(delta_y, -1, 1);
+                } else {
+                    usb_gadget_trackpad_report.buttons = 0;
+                    usb_gadget_trackpad_report.x = (int8_t) multiplied_delta_x;
+                    usb_gadget_trackpad_report.y = (int8_t) multiplied_delta_y;
+                    usb_gadget_trackpad_report.wheel = 0;
+                }
                 usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
 
                 // Set last touch coordinates to current touch coordinates
-                if (delta_x != 0) {
+                if (multiplied_delta_x != 0) {
                     touchscreen_touch_last_x = (int16_t) x;
                 }
-                if (delta_y != 0) {
+                if (multiplied_delta_y != 0) {
                     touchscreen_touch_last_y = (int16_t) y;
                 }
 
@@ -248,24 +253,22 @@ int32_t trackpad_control_loop() {
                     touchscreen_touch_down_delta_non_zero = 1;
                 }
 
-                printf("Touchpad touch data sent: buttons=%x x=%d y=%d\n", usb_gadget_trackpad_report.buttons,
-                        usb_gadget_trackpad_report.x, usb_gadget_trackpad_report.y);
+                printf("Touchpad touch data sent: buttons=%x x=%d y=%d wheel=%d\n", usb_gadget_trackpad_report.buttons,
+                        usb_gadget_trackpad_report.x, usb_gadget_trackpad_report.y, usb_gadget_trackpad_report.wheel);
             }
         } else {
-            // Reset variables
-            touchscreen_touch_last_x = -1;
-            touchscreen_touch_last_y = -1;
+            // Reset report
             usb_gadget_trackpad_report.x = 0;
             usb_gadget_trackpad_report.y = 0;
+            usb_gadget_trackpad_report.wheel = 0;
 
-            // Handle non-zero delta touch down/up (aka left-button click)
+            // Handle non-zero delta touch down/up (aka button clicks)
             if (touchscreen_touch_down_delta_non_zero) {
                 touchscreen_touch_down_delta_non_zero = 0;
                 usb_gadget_trackpad_report.buttons = 0;
             } else if (touchscreen_last_touch_count != 0) {
                 if (touchscreen_multi_touched_down) {
                     usb_gadget_trackpad_report.buttons = 0x01 << 1;
-                    touchscreen_multi_touched_down = 0;
                     printf("Touchpad right-click sent.\n");
                 } else {
                     usb_gadget_trackpad_report.buttons = 0x01;
@@ -274,6 +277,11 @@ int32_t trackpad_control_loop() {
                 usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
                 usb_gadget_trackpad_report.buttons = 0;
             }
+
+            // Reset variables
+            touchscreen_touch_last_x = -1;
+            touchscreen_touch_last_y = -1;
+            touchscreen_multi_touched_down = 0;
 
             usb_gadget_trackpad_write_report(&usb_gadget_trackpad_report);
         }
