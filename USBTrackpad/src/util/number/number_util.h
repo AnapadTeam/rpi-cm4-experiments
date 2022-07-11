@@ -11,6 +11,12 @@ extern "C" {
 #endif
 
 /**
+ * Calculates the absolute value of the given argument.
+ * @param x the number
+ */
+#define ABS(x) (((x) < 0) ? -(x) : (x))
+
+/**
  * Calculates the greater of the two arguments.
  * @param x the first number
  * @param y the second number

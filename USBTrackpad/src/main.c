@@ -13,6 +13,7 @@
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #define I2C_GT9110_ADDRESS_SLAVE (uint16_t) 0x5D
@@ -195,6 +196,8 @@ int32_t trackpad_control_loop() {
     uint8_t touchscreen_touch_down_delta_non_zero = 0;
     uint8_t touchscreen_multi_touched_down = 0;
     uint8_t touchscreen_last_touch_count = 0;
+    uint32_t touchscreen_wheel_move_count = 0;
+    const uint32_t wheel_move_count_increment_threshold = 110;
     while (run_loop) {
         // Wait until touchscreen data is ready to be read
         uint8_t coordinate_status_register = 0;
@@ -238,8 +241,8 @@ int32_t trackpad_control_loop() {
                 // Calculate deltas
                 int32_t delta_x = x - touchscreen_touch_last_x;
                 int32_t delta_y = y - touchscreen_touch_last_y;
-                int32_t multiplied_delta_x = (int32_t) round((double) delta_x * 2.25);
-                int32_t multiplied_delta_y = (int32_t) round((double) delta_y * 2.25);
+                int32_t multiplied_delta_x = (int32_t) round((double) delta_x / 5);
+                int32_t multiplied_delta_y = (int32_t) round((double) delta_y / 5);
 
                 // Clamp deltas
                 delta_x = CLAMP(delta_x, INT8_MIN, INT8_MAX);
@@ -248,11 +251,17 @@ int32_t trackpad_control_loop() {
                 multiplied_delta_y = CLAMP(multiplied_delta_y, INT8_MIN, INT8_MAX);
 
                 // Write "trackpad" report
-                if (number_of_touches == 2) {
+                if (touchscreen_multi_touched_down) {
                     usb_gadget_trackpad_report.buttons = 0;
                     usb_gadget_trackpad_report.x = 0;
                     usb_gadget_trackpad_report.y = 0;
-                    usb_gadget_trackpad_report.wheel = (int8_t) -CLAMP(delta_y, -1, 1);
+
+                    if ((touchscreen_wheel_move_count += ABS(delta_y)) >= wheel_move_count_increment_threshold) {
+                        touchscreen_wheel_move_count = 0;
+                        usb_gadget_trackpad_report.wheel = (int8_t) -CLAMP(delta_y, -1, 1);
+                    } else {
+                        usb_gadget_trackpad_report.wheel = 0;
+                    }
                 } else {
                     usb_gadget_trackpad_report.buttons = 0;
                     usb_gadget_trackpad_report.x = (int8_t) multiplied_delta_x;

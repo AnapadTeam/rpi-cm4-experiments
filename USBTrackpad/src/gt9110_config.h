@@ -28,10 +28,10 @@ extern "C" {
  */
 static const uint8_t gt9110_config[] = {
         0x5b, // 0x8047
-        0x80, // 0x8048
-        0x07, // 0x8049
-        0x03, // 0x804a
-        0x02, // 0x804b
+        0x00, // 0x8048 (X resolution low byte) (original value multiplied by 10 to increase resolution)
+        0x4b, // 0x8049 (X resolution high byte) (original value multiplied by 10 to increase resolution)
+        0x1e, // 0x804a (Y resolution low byte) (original value multiplied by 10 to increase resolution)
+        0x14, // 0x804b (Y resolution high byte) (original value multiplied by 10 to increase resolution)
         0x0a, // 0x804c
         0x3d, // 0x804d
         0x00, // 0x804e
@@ -39,8 +39,8 @@ static const uint8_t gt9110_config[] = {
         0x0f, // 0x8050
         0x1e, // 0x8051
         0x0f, // 0x8052
-        0x50, // 0x8053
-        0x32, // 0x8054
+        0x14, // 0x8053 (Touch detect threshold) (lowered below original value for accommodate a top glass panel)
+        0x13, // 0x8054 (Touch release threshold) (lowered below original value for accommodate a top glass panel)
         0x03, // 0x8055
         0x05, // 0x8056
         0x00, // 0x8057
