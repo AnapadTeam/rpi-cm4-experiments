@@ -24,7 +24,8 @@ extern "C" {
 #define GT9110_ADDRESS_REGISTER_CONFIG_END 0x80FE
 
 /**
- * The raw binary data of the GT9110 configuration data, that is, the data from register 0x8047 through register 0x80FE.
+ * The raw binary data of the GT9110 configuration registers, that is, the data from register 0x8047 through register
+ * 0x80FE.
  */
 static const uint8_t gt9110_config[] = {
         0x5b, // 0x8047
@@ -39,8 +40,8 @@ static const uint8_t gt9110_config[] = {
         0x0f, // 0x8050
         0x1e, // 0x8051
         0x0f, // 0x8052
-        0x14, // 0x8053 (Touch detect threshold) (lowered below original value for accommodate a top glass panel)
-        0x13, // 0x8054 (Touch release threshold) (lowered below original value for accommodate a top glass panel)
+        0x14, // 0x8053 (Touch detect threshold) (lowered below original value to accommodate a top glass panel)
+        0x13, // 0x8054 (Touch release threshold) (lowered below original value to accommodate a top glass panel)
         0x03, // 0x8055
         0x05, // 0x8056
         0x00, // 0x8057

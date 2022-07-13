@@ -1,5 +1,5 @@
 /**
- * The raw binary data of the original GT9110 configuration data, that is, the data from register 0x8047 through
+ * The raw binary data of the original GT9110 configuration registers, that is, the data from register 0x8047 through
  * register 0x80FE.
  */
 static const uint8_t gt9110_config[] = {

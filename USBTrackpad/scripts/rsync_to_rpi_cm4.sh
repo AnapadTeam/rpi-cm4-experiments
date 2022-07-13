@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DIRECTORY_TO_FORMAT="src/"
+SOURCE_DIRECTORY="src/"
 
-if [[ ! -d "$DIRECTORY_TO_FORMAT" ]]; then
-    echo "This script must be called from the project directory (e.g. where the \"${DIRECTORY_TO_FORMAT}\" directory is)."
+if [[ ! -d "$SOURCE_DIRECTORY" ]]; then
+    echo "This script must be called from the project directory (e.g. where the \"${SOURCE_DIRECTORY}\" directory is)."
     exit 1
 fi
 

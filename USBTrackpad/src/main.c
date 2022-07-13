@@ -13,7 +13,6 @@
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 
 #define I2C_GT9110_ADDRESS_SLAVE (uint16_t) 0x5D
