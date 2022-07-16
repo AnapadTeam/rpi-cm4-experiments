@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 JAVA_GRADLE_PROJECT_DIRECTORY="../java/"
 TARGET_JAVA_SOURCE_FILE_TO_GENERATE_HEADERS="${JAVA_GRADLE_PROJECT_DIRECTORY}/src/main/java/tech/anapad/rpicm4experiments/jni/JNIFunctions.java"
 TARGET_C_HEADER_FILE="src/jni/"

@@ -14,7 +14,6 @@ include_directories(${JNI_INCLUDE_DIRS})
 
 # Build shared library
 add_library(LRAHapticsJavaTest SHARED
-        src/util/number/get_set_bits.h
         src/util/i2c/i2c.c
         src/util/i2c/i2c.h
         src/util/lang/lang.h
