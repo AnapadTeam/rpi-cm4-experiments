@@ -19,11 +19,6 @@ dependencies {
 
     // Logging implementation
     implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.11'
-
-    // Pi4J libraries
-    implementation group: 'com.pi4j', name: 'pi4j-core', version: '2.1.1'
-    implementation group: 'com.pi4j', name: 'pi4j-plugin-raspberrypi', version: '2.1.1'
-    implementation group: 'com.pi4j', name: 'pi4j-plugin-linuxfs', version: '2.1.1'
 }
 
 application {

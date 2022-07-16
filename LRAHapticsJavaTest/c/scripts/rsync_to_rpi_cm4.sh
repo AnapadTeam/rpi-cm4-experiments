@@ -12,4 +12,4 @@ if [[ $# -ne 2 ]]; then
     exit 1
 fi
 
-rsync -alPvz --delete --exclude "build/" --exclude ".idea/" --exclude ".gradle/" . "${1}@${2}:~/LRAHapticsJavaTest"
+rsync -alPvz --delete --exclude "build" --exclude ".idea" . "${1}@${2}:~/LRAHapticsJavaTest/c"
