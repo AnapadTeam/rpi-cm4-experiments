@@ -1,6 +1,13 @@
+import org.openjfx.gradle.*
+
+import java.lang.reflect.Field
+
 plugins {
     id 'java'
     id 'application'
+
+    // For JavaFX
+    id 'org.openjfx.javafxplugin' version '0.0.13'
 }
 
 group 'tech.anapad.rpicm4experiments'
@@ -27,8 +34,37 @@ application {
     mainModule = 'FrameBufferJavaTest'
 }
 
+applicationDefaultJvmArgs = ["-Dglass.platform=Monocle"]
+
 distTar.enabled = false
 distZip.enabled = false
 build {
     dependsOn installDist // Creates shell scripts to run the already built jars
 }
+
+// START JavaFX configuration
+Class<?> c = Class.forName("org.openjfx.gradle.JavaFXPlatform");
+Object[] objects = c.getEnumConstants();
+for(Object obj : objects) {
+    try {
+        Field keyField = obj.class.getDeclaredField("classifier");
+        keyField.setAccessible(true); // if it is private for example.
+        keyField.set(obj, "linux-aarch64-monocle");
+        System.out.println("value : " + keyField.get(obj).toString());
+    } catch (NoSuchFieldException e) {
+        e.printStackTrace()
+    }
+}
+
+javafx {
+    version = "18.0.2"
+    modules = ['javafx.base', 'javafx.graphics']
+
+//    var platformField = JavaFXOptions.class.getDeclaredField("platform")
+//    platformField.setAccessible(true)
+//    platformField.set(org.openjfx.gradle.JavaFXOptions, "linux-aarch64-monocle")
+
+
+}
+
+// END JavaFX configuration

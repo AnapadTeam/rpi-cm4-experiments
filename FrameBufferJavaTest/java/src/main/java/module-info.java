@@ -1,4 +1,7 @@
 module FrameBufferJavaTest {
     requires org.slf4j;
-    requires java.desktop;
+    requires javafx.base;
+    requires javafx.graphics;
+
+    exports tech.anapad.rpicm4experiments to javafx.graphics;
 }
