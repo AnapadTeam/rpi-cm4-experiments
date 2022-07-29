@@ -13,6 +13,6 @@ public class Launcher {
      * @throws Exception thrown for {@link Exception}s
      */
     public static void main(String[] args) throws Exception {
-        FrameBufferJavaTest.main(args);
+        USBTrackpadJava.main(args);
     }
 }

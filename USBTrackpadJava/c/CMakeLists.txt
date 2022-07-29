@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(FrameBufferJavaTest)
+project(USBTrackpadJava)
 
 set(CMAKE_C_STANDARD 99)
 
@@ -13,7 +13,7 @@ find_package(JNI REQUIRED)
 include_directories(${JNI_INCLUDE_DIRS})
 
 # Build shared library
-add_library(FrameBufferJavaTest SHARED
+add_library(USBTrackpadJava SHARED
         src/util/lang/lang.h
         src/util/i2c/i2c.c
         src/util/i2c/i2c.h

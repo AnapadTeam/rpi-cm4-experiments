@@ -6,8 +6,8 @@ package tech.anapad.rpicm4experiments.jni;
 public class JNIFunctions {
 
     static {
-        // Load the .so shared library that should be placed in '/lib' and be named exactly "libFrameBufferJavaTest.so"
-        System.loadLibrary("FrameBufferJavaTest");
+        // Load the .so shared library that should be placed in '/lib' and be named exactly "libUSBTrackpadJava.so"
+        System.loadLibrary("USBTrackpadJava");
     }
 
     /**

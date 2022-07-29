@@ -3,8 +3,8 @@
  * @brief Utility functions for register interfacing through the I2C protocol.
  */
 
-#ifndef USBTRACKPAD_I2C_H
-#define USBTRACKPAD_I2C_H
+#ifndef USBTRACKPADJAVA_I2C_H
+#define USBTRACKPADJAVA_I2C_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,4 +66,4 @@ int32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uin
 }
 #endif
 
-#endif // USBTRACKPAD_I2C_H
+#endif // USBTRACKPADJAVA_I2C_H
