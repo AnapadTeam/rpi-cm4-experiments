@@ -5,10 +5,18 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.PixelFormat;
+import javafx.scene.image.WritablePixelFormat;
 import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.anapad.rpicm4experiments.jni.JNIFunctions;
+
+import java.nio.IntBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * {@link USBTrackpadJava} is the main class for testing the LRA haptics via the DRV5605L using the RPi CM4 with Java.
@@ -17,134 +25,118 @@ public class USBTrackpadJava extends Application {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(USBTrackpadJava.class);
 
-    /**
-     * The I2C address of the GT9110 chip.
-     */
-    public static final short I2C_GT9110_ADDRESS = 0x5D;
+    private static final short I2C_GT9110_ADDRESS_SLAVE = 0x5D;
+    private static final short I2C_GT9110_ADDRESS_REGISTER_RESOLUTION = (short) 0x8146;
+    private static final short I2C_GT9110_ADDRESS_REGISTER_STATUS = (short) 0x814E;
+    private static final short I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA = (short) 0x814F;
 
-    // private final JNIFunctions jniFunctions;
-    // private boolean shutdownGracefully;
+    private JNIFunctions jniFunctions;
+    private Canvas canvas;
+    private GraphicsContext graphics;
+    private boolean runLoop;
 
     @Override
     public void init() throws Exception {
-
+        jniFunctions = new JNIFunctions();
     }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        Canvas canvas = new Canvas(1920, 515);
-        GraphicsContext graphicsContext = canvas.getGraphicsContext2D();
-        String javaVersion = System.getProperty("java.version");
-        String javafxVersion = System.getProperty("javafx.version");
-        // graphicsContext.strokeText("Hello, JavaFX " + javafxVersion + ", running on Java " + javaVersion + ".", 0,0);
+        LOGGER.info("Starting...");
 
-        // Media media = new Media(getClass().getClassLoader().getResource("Untitled.mp4").toExternalForm());
-        // javafx.scene.media.MediaPlayer player = new javafx.scene.media.MediaPlayer(media);
-        // MediaView viewer = new MediaView(player);
-        // player.play();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                stop();
+            } catch (Exception exception) {
+                LOGGER.error("Error while stopping!", exception);
+            }
+        }));
 
+        canvas = new Canvas(1920, 515);
+        graphics = canvas.getGraphicsContext2D();
+        graphics.setFill(Color.AQUA);
         Scene scene = new Scene(new Pane(canvas), 1920, 515);
+        scene.setFill(Color.BLACK);
         primaryStage.setScene(scene);
         primaryStage.show();
 
+        jniFunctions.i2cStart();
+        LOGGER.info("Started I2C interface.");
+
+        LOGGER.info("Started");
+
         new Thread(() -> {
-            // Lissajous curve
-            final double centerX = canvas.getWidth() / 2;
-            final double centerY = canvas.getHeight() / 2;
-            final double r = 200;
-            double x = 0;
-            double y = 0;
-            while (!Thread.currentThread().isInterrupted()) {
-                x += 0.01 * 5;
-                y += 0.01 * 7;
-
-                double xCopy = x;
-                double yCopy = y;
-                Platform.runLater(() ->
-                        graphicsContext.fillOval(centerX + Math.cos(xCopy) * r, centerY + Math.sin(yCopy) * r, 10, 10));
-                try {
-                    Thread.sleep(17);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+            try {
+                LOGGER.info("Running...");
+                runLoop = true;
+                trackpadControlLoop();
+            } catch (Exception exception) {
+                LOGGER.error("Error while running!", exception);
             }
-
-            // Show some colors!
-            // int x = 0;
-            // int y = 0;
-            // while (!Thread.currentThread().isInterrupted()) {
-            //     if (x >= 1920) {
-            //         x = 0;
-            //         y += 30;
-            //     }
-            //     x += 15;
-            //     int xCopy = x;
-            //     int yCopy = y;
-            //     Platform.runLater(() -> {
-            //         for (int i = 0; i < 100; i++) {
-            //             graphicsContext.setFill(Color.rgb((int) (Math.random() * 255),
-            //                     (int) (Math.random() * 255), (int) (Math.random() * 255)));
-            //             graphicsContext.fillOval(xCopy, yCopy, 30, 30);
-            //         }
-            //     });
-            //     try {
-            //         Thread.sleep(17);
-            //     } catch (InterruptedException e) {
-            //         throw new RuntimeException(e);
-            //     }
-            // }
         }).start();
+    }
+
+    private final WritablePixelFormat<IntBuffer> pixelFormat =
+            PixelFormat.getIntArgbPreInstance();
+
+    private void trackpadControlLoop() throws Exception {
+        LOGGER.info("Reading screen resolution...");
+        byte[] touchscreenResolutionData = jniFunctions.i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
+                I2C_GT9110_ADDRESS_REGISTER_RESOLUTION, 4);
+        int xResolution = (touchscreenResolutionData[1] << 8) | touchscreenResolutionData[0];
+        int yResolution = (touchscreenResolutionData[3] << 8) | touchscreenResolutionData[2];
+        LOGGER.info("Screen resolution: {}x{}", xResolution, yResolution);
+
+        final int registerTouchDataLength = 8 * 10; // 10 8-byte touch data
+        while (runLoop) {
+            // Wait until touchscreen data is ready to be read
+            byte coordinateStatusRegister;
+            boolean bufferReady;
+            do {
+                coordinateStatusRegister = jniFunctions.i2cReadRegisterByte(I2C_GT9110_ADDRESS_SLAVE,
+                        I2C_GT9110_ADDRESS_REGISTER_STATUS);
+                bufferReady = ((coordinateStatusRegister & 0xFF) >> 7) == 1;
+
+                if (!runLoop) {
+                    return;
+                }
+            } while (!bufferReady);
+
+            // Reset buffer status to trigger another touchscreen sample
+            jniFunctions.i2cWriteRegisterByte(I2C_GT9110_ADDRESS_SLAVE, I2C_GT9110_ADDRESS_REGISTER_STATUS, (byte) 0);
+
+            int numberOfTouches = (coordinateStatusRegister & 0xF0) >> 4;
+            byte[] touchscreenCoordinateData = jniFunctions.i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
+                    I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA, registerTouchDataLength);
+
+            if (numberOfTouches > 0) {
+                int x = ((touchscreenCoordinateData[2] & 0xFF) << 8) | (touchscreenCoordinateData[1] & 0xFF);
+                int y = ((touchscreenCoordinateData[4] & 0xFF) << 8) | (touchscreenCoordinateData[3] & 0xFF);
+                LOGGER.info("Touchscreen touch 0: x={} y={}", x, y);
+                Platform.runLater(() -> {
+                    double xRatio = canvas.getWidth() / xResolution;
+                    double yRatio = canvas.getHeight() / yResolution;
+                    graphics.fillOval(x * xRatio - 15, y * yRatio - 15, 30, 30);
+                });
+            }
+        }
     }
 
     @Override
     public void stop() throws Exception {
+        LOGGER.info("Stopping...");
 
+        runLoop = false;
+        try {
+            jniFunctions.i2cStop();
+            LOGGER.info("Stopped I2C interface.");
+            Files.write(Paths.get("/home/pi/test.txt"), new byte[]{});
+        } catch (Exception exception) {
+            LOGGER.error("Could not stop successfully!", exception);
+        }
+
+        LOGGER.info("Stopped.");
     }
-
-    // /**
-    //  * Instantiates a new {@link USBTrackpadJava}.
-    //  */
-    // public USBTrackpadJava() {
-    //     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
-    //     jniFunctions = new JNIFunctions();
-    //     shutdownGracefully = false;
-    // }
-    //
-    // /**
-    //  * Starts {@link USBTrackpadJava}.
-    //  */
-    // public void start() throws Exception {
-    //     LOGGER.info("Starting...");
-    //
-    //     jniFunctions.i2cStart();
-    //     LOGGER.info("Started I2C interface.");
-    //
-    //     LOGGER.info("Started");
-    //     LOGGER.info("Running...");
-    //
-    //     // TODO
-    // }
-    //
-    // /**
-    //  * Stops {@link USBTrackpadJava}.
-    //  */
-    // public void stop() {
-    //     if (shutdownGracefully) {
-    //         return;
-    //     }
-    //
-    //     LOGGER.info("Stopping...");
-    //
-    //     try {
-    //         jniFunctions.i2cStop();
-    //         LOGGER.info("Stopped I2C interface.");
-    //     } catch (Exception exception) {
-    //         LOGGER.error("Could not stop successfully!", exception);
-    //     }
-    //
-    //     LOGGER.info("Stopped.");
-    //     shutdownGracefully = true;
-    // }
 
     /**
      * The entry point of application.
