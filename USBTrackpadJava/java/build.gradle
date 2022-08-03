@@ -32,7 +32,7 @@ application {
     mainModule = 'USBTrackpadJava'
 }
 
-applicationDefaultJvmArgs = ["-Dglass.platform=Monocle"]
+applicationDefaultJvmArgs = ["-Dglass.platform=Monocle", "-Dprism.verbose=true"]
 
 distTar.enabled = false
 distZip.enabled = false
