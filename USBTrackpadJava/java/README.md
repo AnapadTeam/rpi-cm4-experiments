@@ -2,5 +2,5 @@
 
 Build and run this project with the following command:
 ```java
-./gradlew build && sudo ./build/install/USBTrackpadJava/bin/USBTrackpadJava
+./gradlew build && sudo ./scripts/start.sh
 ```

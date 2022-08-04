@@ -32,7 +32,8 @@ application {
     mainModule = 'USBTrackpadJava'
 }
 
-applicationDefaultJvmArgs = ["-Dglass.platform=Monocle", "-Dprism.verbose=true"]
+applicationDefaultJvmArgs = ["-Dprism.verbose=true", "-Dembedded=monocle", "-Dglass.platform=Monocle", "-Dmonocle.platform=EGL",
+                             "-Dmonocle.egl.lib=/opt/java/javafx-sdk-18.0.2/lib/libgluon_drm-1.1.7.so"]
 
 distTar.enabled = false
 distZip.enabled = false
@@ -61,7 +62,7 @@ for (Object enumConstant : enumConstants) {
 
 javafx {
     version = "18.0.2"
-    modules = ['javafx.controls', 'javafx.base', 'javafx.graphics', 'javafx.media']
+    modules = ["javafx.base", "javafx.graphics", "javafx.controls"]
 }
 
 //
