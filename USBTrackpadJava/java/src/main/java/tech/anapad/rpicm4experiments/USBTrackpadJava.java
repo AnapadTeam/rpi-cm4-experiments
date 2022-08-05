@@ -98,6 +98,15 @@ public class USBTrackpadJava extends Application {
         }
     }
 
+    private static final Color TRANSLUCENT_WHITE = Color.gray(1, 0.5);
+    private static final Stop[] LINEAR_GRADIENT_STOPS = new Stop[]{
+            new Stop(0d * (1d / 3d), Color.rgb(237, 55, 58)),
+            new Stop(1d * (1d / 3d), Color.rgb(199, 89, 190)),
+            new Stop(2d * (1d / 3d), Color.rgb(54, 124, 224)),
+            new Stop(3d * (1d / 3d), Color.rgb(51, 221, 106))};
+    private static final LinearGradient LINEAR_GRADIENT =
+            new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE, LINEAR_GRADIENT_STOPS);
+
     private JNIFunctions jniFunctions;
     private Canvas canvas;
     private GraphicsContext graphics;
@@ -128,6 +137,7 @@ public class USBTrackpadJava extends Application {
         canvas = new Canvas(1920, 515);
         graphics = canvas.getGraphicsContext2D();
         graphics.setFont(Font.font(32));
+        drawLinearGradientBackground();
         Scene scene = new Scene(new Pane(canvas), 1920, 515);
         scene.setFill(Color.BLACK);
         scene.setCursor(Cursor.NONE);
@@ -367,16 +377,7 @@ public class USBTrackpadJava extends Application {
     }
 
     private void drawTouches(byte[] touchscreenCoordinateData, int numberOfTouches) {
-        Platform.runLater(() -> {
-            graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-            Stop[] stops = new Stop[]{
-                    new Stop(0d * (1d / 3d), Color.rgb(237, 55, 58)),
-                    new Stop(1d * (1d / 3d), Color.rgb(199, 89, 190)),
-                    new Stop(2d * (1d / 3d), Color.rgb(54, 124, 224)),
-                    new Stop(3d * (1d / 3d), Color.rgb(51, 221, 106))};
-            graphics.setFill(new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE, stops));
-            graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        });
+        drawLinearGradientBackground();
         final int touchDataLength = 8;
         for (int index = 0; index < touchscreenCoordinateData.length; index += touchDataLength) {
             if (index / touchDataLength < numberOfTouches) {
@@ -394,7 +395,7 @@ public class USBTrackpadJava extends Application {
                     final double radius = size * 3;
                     final double drawX = x * xRatio - radius;
                     final double drawY = y * yRatio - radius;
-                    graphics.setFill(Color.AQUA);
+                    graphics.setFill(TRANSLUCENT_WHITE);
                     graphics.fillOval(drawX, drawY, radius * 2, radius * 2);
 
                     // Draw touchscreen number
@@ -405,6 +406,14 @@ public class USBTrackpadJava extends Application {
                 });
             }
         }
+    }
+
+    private void drawLinearGradientBackground() {
+        Platform.runLater(() -> {
+            // Draw linear gradient background
+            graphics.setFill(LINEAR_GRADIENT);
+            graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        });
     }
 
     @Override
