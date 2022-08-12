@@ -2,18 +2,16 @@ package tech.anapad.rpicm4experiments;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.geometry.VPos;
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
-import javafx.scene.text.Font;
-import javafx.scene.text.TextAlignment;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,13 +106,15 @@ public class USBTrackpadJava extends Application {
             new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE, LINEAR_GRADIENT_STOPS);
 
     private JNIFunctions jniFunctions;
-    private Canvas canvas;
-    private GraphicsContext graphics;
+    // private Canvas canvas;
+    // private GraphicsContext graphics;
     private boolean runLoop;
     private FileOutputStream hidGadgetOutputStream;
     private USBGadgetTrackpadReport usbGadgetTrackpadReport;
     private int xResolution;
     private int yResolution;
+    Group group;
+    final Circle[] circles = new Circle[10];
 
     @Override
     public void init() throws Exception {
@@ -134,11 +134,15 @@ public class USBTrackpadJava extends Application {
         }));
 
         LOGGER.info("Creating UI...");
-        canvas = new Canvas(1920, 515);
-        graphics = canvas.getGraphicsContext2D();
-        graphics.setFont(Font.font(32));
-        drawLinearGradientBackground();
-        Scene scene = new Scene(new Pane(canvas), 1920, 515);
+        // canvas = new Canvas(1920, 515);
+        // graphics = canvas.getGraphicsContext2D();
+        // graphics.setFont(Font.font(32));
+        // drawLinearGradientBackground();
+        for (int i = 0; i < circles.length; i++) {
+            circles[i] = new Circle(0, TRANSLUCENT_WHITE);
+        }
+        group = new Group(circles);
+        Scene scene = new Scene(new StackPane(new Rectangle(1920, 515, LINEAR_GRADIENT), group), 1920, 515);
         scene.setFill(Color.BLACK);
         scene.setCursor(Cursor.NONE);
         primaryStage.setScene(scene);
@@ -377,7 +381,9 @@ public class USBTrackpadJava extends Application {
     }
 
     private void drawTouches(byte[] touchscreenCoordinateData, int numberOfTouches) {
-        drawLinearGradientBackground();
+        // drawLinearGradientBackground();
+        // graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        // Platform.runLater(() -> group.getChildren().clear());
         final int touchDataLength = 8;
         for (int index = 0; index < touchscreenCoordinateData.length; index += touchDataLength) {
             if (index / touchDataLength < numberOfTouches) {
@@ -388,32 +394,38 @@ public class USBTrackpadJava extends Application {
                         (touchscreenCoordinateData[index + 3] & 0xFF);
                 int size = ((touchscreenCoordinateData[index + 6] & 0xFF) << 8) |
                         (touchscreenCoordinateData[index + 5] & 0xFF);
+                int i = index;
                 Platform.runLater(() -> {
                     // Draw touchscreen touch oval
-                    final double xRatio = canvas.getWidth() / xResolution;
-                    final double yRatio = canvas.getHeight() / yResolution;
+                    final double xRatio = 1920d / xResolution;
+                    final double yRatio = 515d / yResolution;
                     final double radius = size * 3;
-                    final double drawX = x * xRatio - radius;
-                    final double drawY = y * yRatio - radius;
-                    graphics.setFill(TRANSLUCENT_WHITE);
-                    graphics.fillOval(drawX, drawY, radius * 2, radius * 2);
-
-                    // Draw touchscreen number
-                    graphics.setFill(Color.WHITE);
-                    graphics.setTextAlign(TextAlignment.CENTER);
-                    graphics.setTextBaseline(VPos.BOTTOM);
-                    graphics.fillText(String.valueOf(id), drawX + radius, drawY - 10);
+                    final double drawX = x * xRatio - (1920d/2d);
+                    final double drawY = y * yRatio - (515d/2d);
+                    circles[i / touchDataLength].setCenterX(drawX * 2);
+                    circles[i / touchDataLength].setCenterY(drawY * 2);
+                    circles[i / touchDataLength].setRadius(radius);
+                    // LOGGER.info("{} {}", drawX - (1920d/2d), drawY);
+                    // group.getChildren().add(new Circle(drawX, drawY, radius, TRANSLUCENT_WHITE));
+                    // graphics.setFill(TRANSLUCENT_WHITE);
+                    // graphics.fillOval(drawX, drawY, radius * 2, radius * 2);
+                    //
+                    // // Draw touchscreen number
+                    // graphics.setFill(Color.WHITE);
+                    // graphics.setTextAlign(TextAlignment.CENTER);
+                    // graphics.setTextBaseline(VPos.BOTTOM);
+                    // graphics.fillText(String.valueOf(id), drawX + radius, drawY - 10);
                 });
             }
         }
     }
 
     private void drawLinearGradientBackground() {
-        Platform.runLater(() -> {
-            // Draw linear gradient background
-            graphics.setFill(LINEAR_GRADIENT);
-            graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        });
+        // Platform.runLater(() -> {
+        //     // Draw linear gradient background
+        //     graphics.setFill(LINEAR_GRADIENT);
+        //     graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        // });
     }
 
     @Override
