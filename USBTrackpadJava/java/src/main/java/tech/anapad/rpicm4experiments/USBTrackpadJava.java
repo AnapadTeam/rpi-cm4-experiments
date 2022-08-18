@@ -142,6 +142,7 @@ public class USBTrackpadJava extends Application {
             circles[i] = new Circle(0, TRANSLUCENT_WHITE);
         }
         group = new Group(circles);
+        // group.setRotate(180);
         Scene scene = new Scene(new StackPane(new Rectangle(1920, 515, LINEAR_GRADIENT), group), 1920, 515);
         scene.setFill(Color.BLACK);
         scene.setCursor(Cursor.NONE);
@@ -291,6 +292,8 @@ public class USBTrackpadJava extends Application {
             if (numberOfTouches > 0) {
                 int x = ((touchscreenCoordinateData[2] & 0xFF) << 8) | (touchscreenCoordinateData[1] & 0xFF);
                 int y = ((touchscreenCoordinateData[4] & 0xFF) << 8) | (touchscreenCoordinateData[3] & 0xFF);
+                x = xResolution - x;
+                y = yResolution - y;
                 LOGGER.info("Touchscreen touch 0: x={} y={}", x, y);
 
                 if (touchscreenTouchLastX == -1 || touchscreenTouchLastY == -1) {
@@ -400,8 +403,8 @@ public class USBTrackpadJava extends Application {
                     final double xRatio = 1920d / xResolution;
                     final double yRatio = 515d / yResolution;
                     final double radius = size * 3;
-                    final double drawX = x * xRatio - (1920d/2d);
-                    final double drawY = y * yRatio - (515d/2d);
+                    final double drawX = x * xRatio - (1920d / 2d);
+                    final double drawY = y * yRatio - (515d / 2d);
                     circles[i / touchDataLength].setCenterX(drawX * 2);
                     circles[i / touchDataLength].setCenterY(drawY * 2);
                     circles[i / touchDataLength].setRadius(radius);
