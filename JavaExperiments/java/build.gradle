@@ -1,0 +1,71 @@
+import java.lang.reflect.Field
+
+plugins {
+    id 'java'
+    id 'application'
+
+    // For JavaFX
+    id 'org.openjfx.javafxplugin' version '0.0.13'
+}
+
+group 'tech.anapad.rpicm4experiments'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 14
+targetCompatibility = 14
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Logging framework
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.36'
+
+    // Logging implementation
+    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.11'
+}
+
+application {
+    // Define the main class for the application.
+    mainClass = 'tech.anapad.rpicm4experiments.JavaExperiments'
+    mainModule = 'JavaExperiments'
+}
+
+applicationDefaultJvmArgs = ["-Dprism.verbose=true", "-Dembedded=monocle", "-Dglass.platform=Monocle", "-Dmonocle.platform=EGL",
+                             "-Dmonocle.egl.lib=/opt/java/javafx-sdk-18.0.2/lib/libgluon_drm-1.1.7.so",
+                             "-Degl.displayid=/dev/dri/card1"]
+
+distTar.enabled = false
+distZip.enabled = false
+build {
+    dependsOn installDist // Creates shell scripts to run the already built jars
+}
+
+//
+// START JavaFX configuration
+//
+
+// The following code uses Reflection to force the OpenJFX Gradle plugin to use Linux aarch64 Monocle platform.
+// This is necessary because the Raspberry Pi OS Lite does not have an X11 windowing manager so JavaFX Monocle will
+// use Linux KMS/DRM to drive to the display.
+Class<?> javaFXPlatformEnum = Class.forName("org.openjfx.gradle.JavaFXPlatform");
+Object[] enumConstants = javaFXPlatformEnum.getEnumConstants();
+for (Object enumConstant : enumConstants) {
+    try {
+        Field field = enumConstant.class.getDeclaredField("classifier")
+        field.setAccessible(true)
+        field.set(enumConstant, "linux-aarch64-monocle")
+    } catch (NoSuchFieldException e) {
+        e.printStackTrace()
+    }
+}
+
+javafx {
+    version = "18.0.2"
+    modules = ["javafx.base", "javafx.graphics", "javafx.controls"]
+}
+
+//
+// END JavaFX configuration
+//
