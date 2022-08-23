@@ -70,7 +70,7 @@ public class JavaExperiments extends Application {
         LOGGER.info("Started I2C interface.");
 
         LOGGER.info("Setting up experiment...");
-        setupExperiment();
+        setupExperimentDRV2605();
         LOGGER.info("Set up experiment.");
 
         LOGGER.info("Started");
@@ -134,29 +134,38 @@ public class JavaExperiments extends Application {
                 touchscreenTouches[touchIndex] = new TouchscreenTouch(id, x, y, size);
             }
 
-            processTouchesForExperiment(touchscreenTouches);
+            processTouchesForExperimentDRV2605(touchscreenTouches);
         }
     }
 
-    private void setupExperiment() throws Exception {
+    //
+    // BEGIN DRV2605 experiment
+    //
+
+    private void setupExperimentDRV2605() throws Exception {
         jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x01, (byte) 0x05, true);
         LOGGER.info("Set DRV2605L to RTP mode.");
+
+        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0x00, true);
+        LOGGER.info("Set RTP register to zero.");
 
         jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x17, (byte) 0xFF, true);
         LOGGER.info("Set DRV2605L overdrive voltage-clamp to max value.");
 
         byte feedbackControlRegister = jniFunctions.i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1A, true);
-        feedbackControlRegister |= (1 << 7); // Set LRA Mode
+        feedbackControlRegister |= (1 << 7); // Set LRA mode
         jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1A, feedbackControlRegister, true);
         LOGGER.info("Set DRV2605L into LRA mode.");
 
-        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0x00, true);
-        LOGGER.info("Set RTP register to zero.");
+        byte control3Register = jniFunctions.i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, true);
+        control3Register |= 1; // Set LRA open-loop mode
+        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, control3Register, true);
+        LOGGER.info("Set DRV2605L into LRA open-loop mode.");
     }
 
     boolean sawZero;
 
-    private void processTouchesForExperiment(TouchscreenTouch[] touchscreenTouches) throws Exception {
+    private void processTouchesForExperimentDRV2605(TouchscreenTouch[] touchscreenTouches) throws Exception {
         Platform.runLater(() -> {
             graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
             graphics.setTextAlign(TextAlignment.LEFT);
@@ -177,6 +186,10 @@ public class JavaExperiments extends Application {
             sawZero = true;
         }
     }
+
+    //
+    // END DRV2605 experiment
+    //
 
     @Override
     public void stop() throws Exception {

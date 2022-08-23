@@ -34,7 +34,7 @@ application {
 
 applicationDefaultJvmArgs = ["-Dprism.verbose=true", "-Dembedded=monocle", "-Dglass.platform=Monocle", "-Dmonocle.platform=EGL",
                              "-Dmonocle.egl.lib=/opt/java/javafx-sdk-18.0.2/lib/libgluon_drm-1.1.7.so",
-                             "-Degl.displayid=/dev/dri/card1"]
+                             "-Degl.displayid=/dev/dri/card0"]
 
 distTar.enabled = false
 distZip.enabled = false
