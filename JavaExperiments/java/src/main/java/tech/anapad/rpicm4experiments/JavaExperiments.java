@@ -13,9 +13,15 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.anapad.rpicm4experiments.jni.JNIFunctions;
 
-import java.util.Arrays;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterByte;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterBytes;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitGet;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitReset;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitSet;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStart;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStop;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteRegisterByte;
 
 /**
  * {@link JavaExperiments} is the main class for testing the LRA haptics via the DRV5605L using the RPi CM4 with Java.
@@ -29,9 +35,10 @@ public class JavaExperiments extends Application {
     private static final short I2C_GT9110_ADDRESS_REGISTER_STATUS = (short) 0x814E;
     private static final short I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA = (short) 0x814F;
 
-    public static final short I2C_DRV2605L_ADDRESS = 0x5A;
+    private static final short I2C_DRV2605L_ADDRESS = 0x5A;
 
-    private JNIFunctions jniFunctions;
+    private static final short I2C_NAU7802_ADDRESS = 0x2A;
+
     private boolean runLoop;
     private Canvas canvas;
     private GraphicsContext graphics;
@@ -39,9 +46,7 @@ public class JavaExperiments extends Application {
     private int touchscreenYResolution;
 
     @Override
-    public void init() {
-        jniFunctions = new JNIFunctions();
-    }
+    public void init() {}
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -66,11 +71,12 @@ public class JavaExperiments extends Application {
         LOGGER.info("Created UI.");
 
         LOGGER.info("Starting I2C interface...");
-        jniFunctions.i2cStart();
+        i2cStart();
         LOGGER.info("Started I2C interface.");
 
         LOGGER.info("Setting up experiment...");
-        setupExperimentDRV2605();
+        // setupExperimentDRV2605();
+        setupExperimentAnalog();
         LOGGER.info("Set up experiment.");
 
         LOGGER.info("Started");
@@ -79,7 +85,8 @@ public class JavaExperiments extends Application {
             try {
                 LOGGER.info("Running...");
                 runLoop = true;
-                trackpadControlLoop();
+                // touchscreenReadLoop();
+                analogExperimentLoop();
             } catch (Exception exception) {
                 LOGGER.error("Error while running!", exception);
                 try {
@@ -91,9 +98,9 @@ public class JavaExperiments extends Application {
         }).start();
     }
 
-    private void trackpadControlLoop() throws Exception {
+    private void touchscreenReadLoop() throws Exception {
         LOGGER.info("Reading screen resolution...");
-        byte[] touchscreenResolutionData = jniFunctions.i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
+        byte[] touchscreenResolutionData = i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
                 I2C_GT9110_ADDRESS_REGISTER_RESOLUTION, 4, false);
         touchscreenXResolution = (touchscreenResolutionData[1] << 8) | touchscreenResolutionData[0];
         touchscreenYResolution = (touchscreenResolutionData[3] << 8) | touchscreenResolutionData[2];
@@ -104,7 +111,7 @@ public class JavaExperiments extends Application {
             byte coordinateStatusRegister;
             boolean bufferReady;
             do {
-                coordinateStatusRegister = jniFunctions.i2cReadRegisterByte(I2C_GT9110_ADDRESS_SLAVE,
+                coordinateStatusRegister = i2cReadRegisterByte(I2C_GT9110_ADDRESS_SLAVE,
                         I2C_GT9110_ADDRESS_REGISTER_STATUS, false);
                 bufferReady = ((coordinateStatusRegister & 0xFF) >> 7) == 1;
 
@@ -114,12 +121,12 @@ public class JavaExperiments extends Application {
             } while (!bufferReady);
 
             // Reset buffer status to trigger another touchscreen sample
-            jniFunctions.i2cWriteRegisterByte(I2C_GT9110_ADDRESS_SLAVE, I2C_GT9110_ADDRESS_REGISTER_STATUS, (byte) 0,
+            i2cWriteRegisterByte(I2C_GT9110_ADDRESS_SLAVE, I2C_GT9110_ADDRESS_REGISTER_STATUS, (byte) 0,
                     false);
 
             // Read touch data
             int numberOfTouches = coordinateStatusRegister & 0x0F;
-            byte[] touchscreenCoordinateData = jniFunctions.i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
+            byte[] touchscreenCoordinateData = i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
                     I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA, 8 * 10 /* 10 8-byte touch data */, false);
             TouchscreenTouch[] touchscreenTouches = new TouchscreenTouch[numberOfTouches];
             for (int touchIndex = 0; touchIndex < touchscreenTouches.length; touchIndex++) {
@@ -143,23 +150,23 @@ public class JavaExperiments extends Application {
     //
 
     private void setupExperimentDRV2605() throws Exception {
-        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x01, (byte) 0x05, true);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x01, (byte) 0x05, true);
         LOGGER.info("Set DRV2605L to RTP mode.");
 
-        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0x00, true);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0x00, true);
         LOGGER.info("Set RTP register to zero.");
 
-        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x17, (byte) 0xFF, true);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x17, (byte) 0xFF, true);
         LOGGER.info("Set DRV2605L overdrive voltage-clamp to max value.");
 
-        byte feedbackControlRegister = jniFunctions.i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1A, true);
+        byte feedbackControlRegister = i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1A, true);
         feedbackControlRegister |= (1 << 7); // Set LRA mode
-        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1A, feedbackControlRegister, true);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1A, feedbackControlRegister, true);
         LOGGER.info("Set DRV2605L into LRA mode.");
 
-        byte control3Register = jniFunctions.i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, true);
+        byte control3Register = i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, true);
         control3Register |= 1; // Set LRA open-loop mode
-        jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, control3Register, true);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, control3Register, true);
         LOGGER.info("Set DRV2605L into LRA open-loop mode.");
     }
 
@@ -167,28 +174,68 @@ public class JavaExperiments extends Application {
 
     private void processTouchesForExperimentDRV2605(TouchscreenTouch[] touchscreenTouches) throws Exception {
         Platform.runLater(() -> {
-            graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-            graphics.setTextAlign(TextAlignment.LEFT);
-            graphics.setTextBaseline(VPos.BOTTOM);
-            graphics.fillText(Arrays.toString(touchscreenTouches), 0, canvas.getHeight() / 2);
+            Platform.runLater(() -> {
+                graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                graphics.setTextAlign(TextAlignment.LEFT);
+                graphics.setTextBaseline(VPos.BOTTOM);
+                int startY = 0;
+                for (TouchscreenTouch touchscreenTouch : touchscreenTouches) {
+                    graphics.fillText(touchscreenTouch.toString(), 0, startY += 20);
+                }
+            });
         });
 
         if (touchscreenTouches.length > 0) {
             if (sawZero) {
                 Thread.sleep(25);
-                jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 127, true);
+                i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 127, true);
                 Thread.sleep(15);
-                jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
+                i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
                 sawZero = false;
             }
         } else {
-            jniFunctions.i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
+            i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
             sawZero = true;
         }
     }
 
     //
     // END DRV2605 experiment
+    //
+
+    //
+    // BEGIN Analog multiplexer and load cell experiment
+    //
+
+    private void setupExperimentAnalog() throws Exception {
+        LOGGER.info("Setting up NAU7802.");
+
+        // Reset chip
+        i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 0); // RR
+
+        // Put chip back into normal mode
+        i2cRegisterBitReset(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 0); // RR
+        i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 1); // PUD
+        i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 2); // PUA
+
+        // Wait for power up (PUR)
+        while (!i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 3)) {}
+
+        LOGGER.info("Set up NAU7802.");
+    }
+
+    private void analogExperimentLoop() throws Exception {
+        while (runLoop) {
+            if (i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 5)) {
+                byte[] adcData = i2cReadRegisterBytes(I2C_NAU7802_ADDRESS, (byte) 0x12, 3, true);
+                int adcValue = adcData[0] << 16 | adcData[1] << 8 | adcData[2];
+                System.out.println(adcValue);
+            }
+        }
+    }
+
+    //
+    // END Analog multiplexer and load cell experiment
     //
 
     @Override
@@ -199,7 +246,7 @@ public class JavaExperiments extends Application {
         try {
             LOGGER.info("Stopping I2C interface...");
             try {
-                jniFunctions.i2cStop();
+                i2cStop();
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
