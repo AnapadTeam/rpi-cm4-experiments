@@ -7,6 +7,9 @@ import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.TextAlignment;
@@ -19,6 +22,7 @@ import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterByte
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitGet;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitReset;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitSet;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitsSet;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStart;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStop;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteRegisterByte;
@@ -48,6 +52,7 @@ public class JavaExperiments extends Application {
     @Override
     public void init() {}
 
+    XYChart.Series<Number, Number> series;
     @Override
     public void start(Stage primaryStage) throws Exception {
         LOGGER.info("Starting...");
@@ -63,7 +68,13 @@ public class JavaExperiments extends Application {
         LOGGER.info("Creating UI...");
         canvas = new Canvas(1920, 515);
         graphics = canvas.getGraphicsContext2D();
-        Scene scene = new Scene(new StackPane(canvas), 1920, 515);
+        final NumberAxis xAxis = new NumberAxis();
+        final NumberAxis yAxis = new NumberAxis();
+        series = new XYChart.Series<>();
+        final LineChart<Number, Number> lineChart = new LineChart<>(xAxis, yAxis);
+        lineChart.getData().add(series);
+        lineChart.setTitle("ADC Values");
+        Scene scene = new Scene(new StackPane(lineChart), 1920, 515);
         scene.setFill(Color.WHITE);
         scene.setCursor(Cursor.NONE);
         primaryStage.setScene(scene);
@@ -215,22 +226,55 @@ public class JavaExperiments extends Application {
 
         // Put chip back into normal mode
         i2cRegisterBitReset(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 0); // RR
+        Thread.sleep(1);
         i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 1); // PUD
         i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 2); // PUA
 
         // Wait for power up (PUR)
         while (!i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 3)) {}
 
+        // Configure chip
+        i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x01, true, 0b111, 2, 0); // Gain = x128
+        i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x01, true, 0b101, 5, 3); // LDO = 3.0V
+        i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 7); // AVDDS
+        i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x02, true, 0b111, 6, 4); // Sample rate = 320 sps
+
+        // Calibrate chip
+        i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x02, true, 2);
+        int iteration = 0;
+        while (i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x02, true, 2)) {
+            iteration++;
+            if (iteration > 10000) {
+                LOGGER.info("NAU7802 calibration failed.");
+                Platform.exit();
+                return;
+            }
+        }
+
         LOGGER.info("Set up NAU7802.");
     }
 
+    int x = 0;
     private void analogExperimentLoop() throws Exception {
         while (runLoop) {
-            if (i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 5)) {
+            final int samples = 40;
+            double sum = 0;
+            for (int i = 0; i < samples; i++) {
+                while (!i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 5)) {}
                 byte[] adcData = i2cReadRegisterBytes(I2C_NAU7802_ADDRESS, (byte) 0x12, 3, true);
-                int adcValue = adcData[0] << 16 | adcData[1] << 8 | adcData[2];
-                System.out.println(adcValue);
+                int adcValue = (adcData[0] & 0xFF) << 16 | (adcData[1] & 0xFF) << 8 | (adcData[2] & 0xFF);
+                adcValue = adcValue << 8;
+                adcValue = adcValue >> 8;
+                sum += adcValue;
             }
+            final double sumFinal = sum;
+            Platform.runLater(() -> {
+                series.getData().add(new XYChart.Data<>(x++, sumFinal / samples));
+                // graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                // graphics.setTextAlign(TextAlignment.LEFT);
+                // graphics.setTextBaseline(VPos.BOTTOM);
+                // graphics.fillText(String.valueOf(sumFinal / samples), 0, canvas.getHeight() / 2);
+            });
         }
     }
 

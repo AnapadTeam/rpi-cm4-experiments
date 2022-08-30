@@ -1,7 +1,7 @@
 package tech.anapad.rpicm4experiments.jni;
 
 import static tech.anapad.rpicm4experiments.util.BitUtil.getBit;
-import static tech.anapad.rpicm4experiments.util.BitUtil.setBit;
+import static tech.anapad.rpicm4experiments.util.BitUtil.setBits;
 
 /**
  * {@link JNIFunctions} is used to interface with the low-level C functions via JNI.
@@ -88,21 +88,21 @@ public class JNIFunctions {
 
     // TODO add documentation to below
 
-    private static void i2cSetRegisterBit(short slaveAddress, short registerAddress, boolean is8BitRegisterAddress,
-            int value, int index) throws Exception {
+    public static void i2cRegisterBitsSet(short slaveAddress, short registerAddress, boolean is8BitRegisterAddress,
+            int value, int msb, int lsb) throws Exception {
         byte registerByte = i2cReadRegisterByte(slaveAddress, registerAddress, is8BitRegisterAddress);
-        registerByte = (byte) setBit(registerByte, value, index);
+        registerByte = (byte) setBits(registerByte, value, msb, lsb);
         i2cWriteRegisterByte(slaveAddress, registerAddress, registerByte, is8BitRegisterAddress);
     }
 
     public static void i2cRegisterBitSet(short slaveAddress, short registerAddress, boolean is8BitRegisterAddress,
             int index) throws Exception {
-        i2cSetRegisterBit(slaveAddress, registerAddress, is8BitRegisterAddress, 1, index);
+        i2cRegisterBitsSet(slaveAddress, registerAddress, is8BitRegisterAddress, 1, index, index);
     }
 
     public static void i2cRegisterBitReset(short slaveAddress, short registerAddress, boolean is8BitRegisterAddress,
             int index) throws Exception {
-        i2cSetRegisterBit(slaveAddress, registerAddress, is8BitRegisterAddress, 0, index);
+        i2cRegisterBitsSet(slaveAddress, registerAddress, is8BitRegisterAddress, 0, index, index);
     }
 
     public static boolean i2cRegisterBitGet(short slaveAddress, short registerAddress, boolean is8BitRegisterAddress,
