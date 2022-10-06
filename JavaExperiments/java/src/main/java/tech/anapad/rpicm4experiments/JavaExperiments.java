@@ -16,6 +16,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.anapad.rpicm4experiments.util.BitUtil;
 
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterBytes;
@@ -26,6 +27,7 @@ import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitsSet;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStart;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStop;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteRegisterByte;
+import static tech.anapad.rpicm4experiments.util.BitUtil.setBit;
 
 /**
  * {@link JavaExperiments} is the main class for testing the LRA haptics via the DRV5605L using the RPi CM4 with Java.
@@ -53,6 +55,7 @@ public class JavaExperiments extends Application {
     public void init() {}
 
     XYChart.Series<Number, Number> series;
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         LOGGER.info("Starting...");
@@ -68,12 +71,14 @@ public class JavaExperiments extends Application {
         LOGGER.info("Creating UI...");
         canvas = new Canvas(1920, 515);
         graphics = canvas.getGraphicsContext2D();
+
         final NumberAxis xAxis = new NumberAxis();
         final NumberAxis yAxis = new NumberAxis();
         series = new XYChart.Series<>();
         final LineChart<Number, Number> lineChart = new LineChart<>(xAxis, yAxis);
         lineChart.getData().add(series);
         lineChart.setTitle("ADC Values");
+
         Scene scene = new Scene(new StackPane(lineChart), 1920, 515);
         scene.setFill(Color.WHITE);
         scene.setCursor(Cursor.NONE);
@@ -177,6 +182,7 @@ public class JavaExperiments extends Application {
 
         byte control3Register = i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, true);
         control3Register |= 1; // Set LRA open-loop mode
+        // control3Register = (byte) setBit(control3Register, 0, 0);
         i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, control3Register, true);
         LOGGER.info("Set DRV2605L into LRA open-loop mode.");
     }
@@ -200,7 +206,7 @@ public class JavaExperiments extends Application {
             if (sawZero) {
                 Thread.sleep(25);
                 i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 127, true);
-                Thread.sleep(15);
+                Thread.sleep(100);
                 i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
                 sawZero = false;
             }
@@ -255,6 +261,7 @@ public class JavaExperiments extends Application {
     }
 
     int x = 0;
+
     private void analogExperimentLoop() throws Exception {
         while (runLoop) {
             final int samples = 40;
