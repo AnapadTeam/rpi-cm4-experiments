@@ -24,6 +24,14 @@ JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cSt
     }
 }
 
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteByte(JNIEnv* env, jobject object,
+        jshort slave_address, jbyte byte) {
+    int32_t code = i2c_write_byte(i2c_dev_fd, slave_address, byte);
+    if (code < 0) {
+        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), "Could not write to I2C device!");
+    }
+}
+
 JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteRegisterByte(JNIEnv* env,
         jobject object, jshort slave_address, jshort register_address, jbyte register_data,
         jboolean is8BitRegisterAddress) {
@@ -45,6 +53,15 @@ JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWr
     if (code < 0) {
         (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), "Could not write to I2C device!");
     }
+}
+
+JNIEXPORT jbyte JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadByte(JNIEnv* env, jobject object,
+        jshort slave_address) {
+    int32_t byte = i2c_read_byte(i2c_dev_fd, slave_address);
+    if (byte < 0) {
+        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), "Could not read from I2C device!");
+    }
+    return (int8_t) byte;
 }
 
 JNIEXPORT jbyte JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadRegisterByte(JNIEnv* env,

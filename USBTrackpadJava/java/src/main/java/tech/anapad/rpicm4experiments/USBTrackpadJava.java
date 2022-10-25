@@ -292,8 +292,9 @@ public class USBTrackpadJava extends Application {
             if (numberOfTouches > 0) {
                 int x = ((touchscreenCoordinateData[2] & 0xFF) << 8) | (touchscreenCoordinateData[1] & 0xFF);
                 int y = ((touchscreenCoordinateData[4] & 0xFF) << 8) | (touchscreenCoordinateData[3] & 0xFF);
-                x = xResolution - x;
-                y = yResolution - y;
+                // Invert axis
+                // x = xResolution - x;
+                // y = yResolution - y;
                 LOGGER.info("Touchscreen touch 0: x={} y={}", x, y);
 
                 if (touchscreenTouchLastX == -1 || touchscreenTouchLastY == -1) {

@@ -28,6 +28,16 @@ public class JNIFunctions {
     public static native void i2cStop() throws Exception;
 
     /**
+     * Writes a byte an I2C slave.
+     *
+     * @param slaveAddress the slave address
+     * @param data         the byte to write
+     *
+     * @throws Exception thrown for {@link Exception}s
+     */
+    public static native void i2cWriteByte(short slaveAddress, byte data) throws Exception;
+
+    /**
      * Writes a byte to a register of an I2C slave.
      *
      * @param slaveAddress          the slave address
@@ -54,6 +64,15 @@ public class JNIFunctions {
      */
     public static native void i2cWriteRegisterBytes(short slaveAddress, short registerAddress, byte[] registerData,
             boolean is8BitRegisterAddress) throws Exception;
+
+    /**
+     * Reads a byte from an I2C slave.
+     *
+     * @param slaveAddress the slave address
+     *
+     * @throws Exception thrown for {@link Exception}s
+     */
+    public static native byte i2cReadByte(short slaveAddress) throws Exception;
 
     /**
      * Reads a byte from a register of an I2C slave.

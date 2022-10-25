@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.anapad.rpicm4experiments.util.BitUtil;
 
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterBytes;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitGet;
@@ -26,6 +27,7 @@ import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitSet;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitsSet;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStart;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStop;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteRegisterByte;
 import static tech.anapad.rpicm4experiments.util.BitUtil.setBit;
 
@@ -44,6 +46,8 @@ public class JavaExperiments extends Application {
     private static final short I2C_DRV2605L_ADDRESS = 0x5A;
 
     private static final short I2C_NAU7802_ADDRESS = 0x2A;
+
+    private static final short I2C_TCA9548A_ADDRESS = 0x70;
 
     private boolean runLoop;
     private Canvas canvas;
@@ -92,7 +96,8 @@ public class JavaExperiments extends Application {
 
         LOGGER.info("Setting up experiment...");
         // setupExperimentDRV2605();
-        setupExperimentAnalog();
+        // setupExperimentAnalog();
+        setupExperimentAnalogMultiplexer();
         LOGGER.info("Set up experiment.");
 
         LOGGER.info("Started");
@@ -102,7 +107,7 @@ public class JavaExperiments extends Application {
                 LOGGER.info("Running...");
                 runLoop = true;
                 // touchscreenReadLoop();
-                analogExperimentLoop();
+                // analogExperimentLoop();
             } catch (Exception exception) {
                 LOGGER.error("Error while running!", exception);
                 try {
@@ -221,7 +226,7 @@ public class JavaExperiments extends Application {
     //
 
     //
-    // BEGIN Analog multiplexer and load cell experiment
+    // BEGIN Load cell experiment
     //
 
     private void setupExperimentAnalog() throws Exception {
@@ -286,7 +291,31 @@ public class JavaExperiments extends Application {
     }
 
     //
-    // END Analog multiplexer and load cell experiment
+    // END Load cell experiment
+    //
+
+    //
+    // BEGIN Analog multiplexer experiment
+    //
+
+    private void setupExperimentAnalogMultiplexer() throws Exception {
+        i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b0100_0000);
+
+        // setupExperimentDRV2605();
+
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 127, true);
+        Thread.sleep(5000);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
+
+        // i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b1000_0000);
+        // LOGGER.info("Register: {}", i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (short) 0x02, true));
+        //
+        // i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b0100_0000);
+        // LOGGER.info("Register: {}", i2cReadRegisterByte(I2C_DRV2605L_ADDRESS, (short) 0x02, true));
+    }
+
+    //
+    // END Analog multiplexer experiment
     //
 
     @Override

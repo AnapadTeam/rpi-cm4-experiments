@@ -3,8 +3,8 @@
  * @brief Utility functions for the C language.
  */
 
-#ifndef USBTRACKPADJAVA_LANG_H
-#define USBTRACKPADJAVA_LANG_H
+#ifndef JAVAEXPERIMENTS_LANG_H
+#define JAVAEXPERIMENTS_LANG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,4 +33,4 @@ extern "C" {
 }
 #endif
 
-#endif // USBTRACKPADJAVA_LANG_H
+#endif // JAVAEXPERIMENTS_LANG_H

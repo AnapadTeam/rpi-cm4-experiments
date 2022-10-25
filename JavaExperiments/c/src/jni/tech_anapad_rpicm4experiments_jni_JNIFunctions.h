@@ -23,6 +23,14 @@ JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cSt
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
+ * Method:    i2cWriteByte
+ * Signature: (SB)V
+ */
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteByte(JNIEnv*, jobject, jshort,
+        jbyte);
+
+/*
+ * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
  * Method:    i2cWriteRegisterByte
  * Signature: (SSBZ)V
  */
@@ -36,6 +44,13 @@ JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWr
  */
 JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteRegisterBytes(JNIEnv*, jobject,
         jshort, jshort, jbyteArray, jboolean);
+
+/*
+ * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
+ * Method:    i2cReadByte
+ * Signature: (S)B
+ */
+JNIEXPORT jbyte JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadByte(JNIEnv*, jobject, jshort);
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions

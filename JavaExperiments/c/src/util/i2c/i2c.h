@@ -3,8 +3,8 @@
  * @brief Utility functions for register interfacing through the I2C protocol.
  */
 
-#ifndef USBTRACKPADJAVA_I2C_H
-#define USBTRACKPADJAVA_I2C_H
+#ifndef JAVAEXPERIMENTS_I2C_H
+#define JAVAEXPERIMENTS_I2C_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,6 +18,14 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+
+/**
+ * Writes a byte to an I2C slave.
+ * @param i2c_dev_fd the i2c device file descriptor
+ * @param slave_address the slave address
+ * @param register_data the byte to write
+ */
+int32_t i2c_write_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uint8_t byte);
 
 /**
  * Writes a byte to a register of an I2C slave.
@@ -43,6 +51,14 @@ int32_t i2c_write_register_byte(uint32_t i2c_dev_fd, uint16_t slave_address, uin
  */
 int32_t i2c_write_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uint16_t register_address,
         uint8_t* register_data, uint16_t register_data_length, bool is8BitRegisterAddress);
+
+/**
+ * Reads a byte from an I2C slave.
+ * @param i2c_dev_fd the i2c device file descriptor
+ * @param slave_address the slave address
+ * @return the byte or a negative number if an error occurred
+ */
+int32_t i2c_read_byte(uint32_t i2c_dev_fd, uint16_t slave_address);
 
 /**
  * Reads a byte from a register of an I2C slave.
@@ -72,4 +88,4 @@ int32_t i2c_read_register_bytes(uint32_t i2c_dev_fd, uint16_t slave_address, uin
 }
 #endif
 
-#endif // USBTRACKPADJAVA_I2C_H
+#endif // JAVAEXPERIMENTS_I2C_H
