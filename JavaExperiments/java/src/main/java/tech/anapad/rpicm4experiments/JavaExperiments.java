@@ -95,9 +95,9 @@ public class JavaExperiments extends Application {
         LOGGER.info("Started I2C interface.");
 
         LOGGER.info("Setting up experiment...");
-        // setupExperimentDRV2605();
+        setupExperimentDRV2605();
         // setupExperimentAnalog();
-        setupExperimentAnalogMultiplexer();
+        // setupExperimentAnalogMultiplexer();
         LOGGER.info("Set up experiment.");
 
         LOGGER.info("Started");
@@ -190,6 +190,26 @@ public class JavaExperiments extends Application {
         // control3Register = (byte) setBit(control3Register, 0, 0);
         i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x1D, control3Register, true);
         LOGGER.info("Set DRV2605L into LRA open-loop mode.");
+
+        i2cWriteRegisterByte((short) 0x23, (byte) 0x03, (byte) 0x00, true);
+        i2cWriteRegisterByte((short) 0x23, (byte) 0x01, (byte) 0b0010_0000, true);
+        LOGGER.info("VALUE: {}", i2cReadRegisterByte((short) 0x23, (byte) 0x00, true));
+
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 127, true);
+        Thread.sleep(1000);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
+
+        i2cWriteRegisterByte((short) 0x23, (byte) 0x03, (byte) 0x00, true);
+        i2cWriteRegisterByte((short) 0x23, (byte) 0x01, (byte) 0b0000_0000, true);
+        LOGGER.info("VALUE: {}", i2cReadRegisterByte((short) 0x23, (byte) 0x00, true));
+
+        i2cWriteRegisterByte((short) 0x21, (byte) 0x03, (byte) 0x00, true);
+        i2cWriteRegisterByte((short) 0x21, (byte) 0x01, (byte) 0b0010_0000, true);
+        LOGGER.info("VALUE: {}", i2cReadRegisterByte((short) 0x21, (byte) 0x00, true));
+
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 127, true);
+        Thread.sleep(1000);
+        i2cWriteRegisterByte(I2C_DRV2605L_ADDRESS, (byte) 0x02, (byte) 0, true);
     }
 
     boolean sawZero;
