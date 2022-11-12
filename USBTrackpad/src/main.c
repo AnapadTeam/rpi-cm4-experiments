@@ -146,7 +146,7 @@ size_t usb_gadget_trackpad_write_report(usb_gadget_trackpad_report_t* usb_gadget
 
 int32_t write_gt9110_configuration() {
     printf("Opening I2C device...\n");
-    int32_t i2c_dev_fd = open("/dev/i2c-1", O_RDWR);
+    int32_t i2c_dev_fd = open("/dev/i2c-5", O_RDWR);
     if (i2c_dev_fd < 0) {
         perror("Failed to open I2C device");
         return 1;
@@ -166,7 +166,7 @@ int32_t write_gt9110_configuration() {
 
 int32_t trackpad_control_loop() {
     printf("Opening I2C device...\n");
-    int32_t i2c_dev_fd = open("/dev/i2c-1", O_RDWR);
+    int32_t i2c_dev_fd = open("/dev/i2c-5", O_RDWR);
     if (i2c_dev_fd < 0) {
         perror("Failed to open I2C device");
         return 1;
@@ -325,7 +325,7 @@ after_run_loop:
 }
 
 int32_t main() {
-    // write_gt9110_configuration();
+//     write_gt9110_configuration();
 
     if (usb_gadget_trackpad_create()) {
         usb_gadget_trackpad_remove();

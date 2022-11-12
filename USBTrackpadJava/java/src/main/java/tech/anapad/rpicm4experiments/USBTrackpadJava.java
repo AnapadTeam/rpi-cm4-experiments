@@ -2,20 +2,22 @@ package tech.anapad.rpicm4experiments;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.VPos;
 import javafx.scene.Cursor;
-import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.anapad.rpicm4experiments.jni.JNIFunctions;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -23,11 +25,15 @@ import java.io.IOException;
 import java.nio.file.Paths;
 
 import static java.nio.file.Files.createSymbolicLink;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterByte;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterBytes;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStart;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStop;
+import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteRegisterByte;
 import static tech.anapad.rpicm4experiments.util.FileUtil.createDirectoryPath;
 import static tech.anapad.rpicm4experiments.util.FileUtil.fileWithByteContents;
 import static tech.anapad.rpicm4experiments.util.FileUtil.fileWithStringContents;
 import static tech.anapad.rpicm4experiments.util.FileUtil.removePath;
-import static tech.anapad.rpicm4experiments.util.MathUtil.clamp;
 
 /**
  * {@link USBTrackpadJava} is the main class for testing the LRA haptics via the DRV5605L using the RPi CM4 with Java.
@@ -84,7 +90,39 @@ public class USBTrackpadJava extends Application {
             0x95, 0x03, //     Report Count (3)
             0x81, 0x06, //     Input (Data,Var,Rel)
             0xc0, //         End Collection
-            0xc0 //        End Collection
+            0xc0, //        End Collection
+            0x05, 0x01,  // Usage Page (Generic Desktop)
+            0x09, 0x06,  // Usage (Keyboard)
+            0xa1, 0x01,  // Collection (Application)
+            0x05, 0x07,  //   Usage Page (Keyboard)
+            0x19, 0xe0,  //   Usage Minimum (Keyboard LeftControl)
+            0x29, 0xe7,  //   Usage Maximum (Keyboard Right GUI)
+            0x15, 0x00,  //   Logical Minimum (0)
+            0x25, 0x01,  //   Logical Maximum (1)
+            0x75, 0x01,  //   Report Size (1)
+            0x95, 0x08,  //   Report Count (8)
+            0x81, 0x02,  //   Input (Data,Var,Abs)
+            0x95, 0x01,  //   Report Count (1)
+            0x75, 0x08,  //   Report Size (8)
+            0x81, 0x03,  //   Input (Cnst,Var,Abs)
+            0x95, 0x05,  //   Report Count (5)
+            0x75, 0x01,  //   Report Size (1)
+            0x05, 0x08,  //   Usage Page (LEDs)
+            0x19, 0x01,  //   Usage Minimum (Num Lock)
+            0x29, 0x05,  //   Usage Maximum (Kana)
+            0x91, 0x02,  //   Output (Data,Var,Abs)
+            0x95, 0x01,  //   Report Count (1)
+            0x75, 0x03,  //   Report Size (3)
+            0x91, 0x03,  //   Output (Cnst,Var,Abs)
+            0x95, 0x06,  //   Report Count (6)
+            0x75, 0x08,  //   Report Size (8)
+            0x15, 0x00,  //   Logical Minimum (0)
+            0x25, 0x65,  //   Logical Maximum (101)
+            0x05, 0x07,  //   Usage Page (Keyboard)
+            0x19, 0x00,  //   Usage Minimum (Reserved (no event indicated))
+            0x29, 0x65,  //   Usage Maximum (Keyboard Application)
+            0x81, 0x00,  //   Input (Data,Ary,Abs)
+            0xc0 //         End Collection
     };
     private static final byte[] USB_GADGET_TRACKPAD_REPORT_DESCRIPTOR_BYTES =
             new byte[USB_GADGET_TRACKPAD_REPORT_DESCRIPTOR.length];
@@ -105,20 +143,18 @@ public class USBTrackpadJava extends Application {
     private static final LinearGradient LINEAR_GRADIENT =
             new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE, LINEAR_GRADIENT_STOPS);
 
-    private JNIFunctions jniFunctions;
-    // private Canvas canvas;
-    // private GraphicsContext graphics;
+    private Canvas canvas;
+    private GraphicsContext graphics;
     private boolean runLoop;
     private FileOutputStream hidGadgetOutputStream;
     private USBGadgetTrackpadReport usbGadgetTrackpadReport;
     private int xResolution;
     private int yResolution;
-    Group group;
-    final Circle[] circles = new Circle[10];
+    // Group group;
+    // final Circle[] circles = new Circle[10];
 
     @Override
     public void init() throws Exception {
-        jniFunctions = new JNIFunctions();
     }
 
     @Override
@@ -134,16 +170,19 @@ public class USBTrackpadJava extends Application {
         }));
 
         LOGGER.info("Creating UI...");
-        // canvas = new Canvas(1920, 515);
-        // graphics = canvas.getGraphicsContext2D();
-        // graphics.setFont(Font.font(32));
-        // drawLinearGradientBackground();
-        for (int i = 0; i < circles.length; i++) {
-            circles[i] = new Circle(0, TRANSLUCENT_WHITE);
-        }
-        group = new Group(circles);
+        canvas = new Canvas(1920, 515);
+        graphics = canvas.getGraphicsContext2D();
+        graphics.setFont(Font.font(32));
+        drawLinearGradientBackground();
+        // for (int i = 0; i < circles.length; i++) {
+        //     circles[i] = new Circle(0, TRANSLUCENT_WHITE);
+        // }
+        // group = new Group(circles);
         // group.setRotate(180);
-        Scene scene = new Scene(new StackPane(new Rectangle(1920, 515, LINEAR_GRADIENT), group), 1920, 515);
+        // ImageView view = new ImageView(new Image("01 Keyboard.png", 1920, 515, true, false));
+        // view.setX(0);
+        // view.setY(0);
+        Scene scene = new Scene(new StackPane(new Rectangle(1920, 515, LINEAR_GRADIENT), canvas), 1920, 515);
         scene.setFill(Color.BLACK);
         scene.setCursor(Cursor.NONE);
         primaryStage.setScene(scene);
@@ -151,7 +190,7 @@ public class USBTrackpadJava extends Application {
         LOGGER.info("Created UI.");
 
         LOGGER.info("Starting I2C interface...");
-        jniFunctions.i2cStart();
+        i2cStart();
         LOGGER.info("Started I2C interface.");
 
         LOGGER.info("Creating the USB HID mouse gadget...");
@@ -178,6 +217,11 @@ public class USBTrackpadJava extends Application {
 
     private void createUSBTrackpad() {
         createDirectoryPath(USB_GADGET_TRACKPAD_PATH);
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
         fileWithStringContents(USB_GADGET_TRACKPAD_PATH + "idVendor", "0x1d6b"); // Linux Foundation
         fileWithStringContents(USB_GADGET_TRACKPAD_PATH + "idProduct", "0x0104"); // Multifunction Composite Gadget
@@ -194,9 +238,9 @@ public class USBTrackpadJava extends Application {
         fileWithStringContents(USB_GADGET_TRACKPAD_CONFIGURATION_PATH + "MaxPower", "250"); // 250mA
 
         createDirectoryPath(USB_GADGET_TRACKPAD_FUNCTIONS_PATH);
-        fileWithStringContents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH + "protocol", "2"); // 1=keyboard, 2=mouse
+        fileWithStringContents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH + "protocol", "0"); // 1=keyboard, 2=mouse
         fileWithStringContents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH + "subclass", "1"); // 0 = no boot, 1 = boot
-        fileWithStringContents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH + "report_length", "4");
+        fileWithStringContents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH + "report_length", "12");
         fileWithByteContents(USB_GADGET_TRACKPAD_FUNCTIONS_PATH + "report_desc",
                 USB_GADGET_TRACKPAD_REPORT_DESCRIPTOR_BYTES);
         try {
@@ -219,13 +263,13 @@ public class USBTrackpadJava extends Application {
     }
 
     private void writeUSBGadgetTrackpadReport() throws IOException {
-        hidGadgetOutputStream.write(new byte[]{
-                usbGadgetTrackpadReport.getButtons(),
-                usbGadgetTrackpadReport.getX(),
-                usbGadgetTrackpadReport.getY(),
-                usbGadgetTrackpadReport.getWheel()
-        });
-        hidGadgetOutputStream.flush();
+        // hidGadgetOutputStream.write(new byte[]{
+        //         usbGadgetTrackpadReport.getButtons(),
+        //         usbGadgetTrackpadReport.getX(),
+        //         usbGadgetTrackpadReport.getY(),
+        //         usbGadgetTrackpadReport.getWheel()
+        // });
+        // hidGadgetOutputStream.flush();
     }
 
     private void destroyUSBTrackpad() {
@@ -248,8 +292,8 @@ public class USBTrackpadJava extends Application {
 
     private void trackpadControlLoop() throws Exception {
         LOGGER.info("Reading screen resolution...");
-        byte[] touchscreenResolutionData = jniFunctions.i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
-                I2C_GT9110_ADDRESS_REGISTER_RESOLUTION, 4);
+        byte[] touchscreenResolutionData = i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
+                I2C_GT9110_ADDRESS_REGISTER_RESOLUTION, 4, false);
         xResolution = (touchscreenResolutionData[1] << 8) | touchscreenResolutionData[0];
         yResolution = (touchscreenResolutionData[3] << 8) | touchscreenResolutionData[2];
         LOGGER.info("Screen resolution: {}x{}", xResolution, yResolution);
@@ -264,129 +308,136 @@ public class USBTrackpadJava extends Application {
         final int wheelMoveCountIncrementThreshold = 110;
         while (runLoop) {
             // Wait until touchscreen data is ready to be read
-            byte coordinateStatusRegister;
+            byte coordinateStatusRegister = 0x00;
             boolean bufferReady;
             do {
-                coordinateStatusRegister = jniFunctions.i2cReadRegisterByte(I2C_GT9110_ADDRESS_SLAVE,
-                        I2C_GT9110_ADDRESS_REGISTER_STATUS);
-                bufferReady = ((coordinateStatusRegister & 0xFF) >> 7) == 1;
+                try {
+                    coordinateStatusRegister = i2cReadRegisterByte(I2C_GT9110_ADDRESS_SLAVE,
+                            I2C_GT9110_ADDRESS_REGISTER_STATUS, false);
+                    bufferReady = ((coordinateStatusRegister & 0xFF) >> 7) == 1;
 
-                if (!runLoop) {
-                    return;
+                    if (!runLoop) {
+                        return;
+                    }
+                } catch (Exception ignored) {
+                    bufferReady = false;
                 }
             } while (!bufferReady);
 
             // Reset buffer status to trigger another touchscreen sample
-            jniFunctions.i2cWriteRegisterByte(I2C_GT9110_ADDRESS_SLAVE, I2C_GT9110_ADDRESS_REGISTER_STATUS, (byte) 0);
+            i2cWriteRegisterByte(I2C_GT9110_ADDRESS_SLAVE,
+                    I2C_GT9110_ADDRESS_REGISTER_STATUS, (byte) 0, false);
 
             // Read touch data
             int numberOfTouches = coordinateStatusRegister & 0x0F;
-            byte[] touchscreenCoordinateData = jniFunctions.i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
-                    I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA, registerTouchDataLength);
+            byte[] touchscreenCoordinateData = i2cReadRegisterBytes(I2C_GT9110_ADDRESS_SLAVE,
+                    I2C_GT9110_ADDRESS_REGISTER_TOUCH_DATA, registerTouchDataLength, false);
             drawTouches(touchscreenCoordinateData, numberOfTouches);
 
-            if (!touchscreenMultiTouchedDown) {
-                touchscreenMultiTouchedDown = numberOfTouches >= 2;
-            }
-
-            if (numberOfTouches > 0) {
-                int x = ((touchscreenCoordinateData[2] & 0xFF) << 8) | (touchscreenCoordinateData[1] & 0xFF);
-                int y = ((touchscreenCoordinateData[4] & 0xFF) << 8) | (touchscreenCoordinateData[3] & 0xFF);
-                // Invert axis
-                // x = xResolution - x;
-                // y = yResolution - y;
-                LOGGER.info("Touchscreen touch 0: x={} y={}", x, y);
-
-                if (touchscreenTouchLastX == -1 || touchscreenTouchLastY == -1) {
-                    // Set last touch coordinates to current touch coordinates
-                    touchscreenTouchLastX = x;
-                    touchscreenTouchLastY = y;
-                } else {
-                    // Calculate deltas
-                    int deltaX = x - touchscreenTouchLastX;
-                    int deltaY = y - touchscreenTouchLastY;
-                    int multipliedDeltaX = (int) Math.round((double) deltaX / 5);
-                    int multipliedDeltaY = (int) Math.round((double) deltaY / 5);
-
-                    // Clamp deltas
-                    deltaX = clamp(deltaX, Byte.MIN_VALUE, Byte.MAX_VALUE);
-                    deltaY = clamp(deltaY, Byte.MIN_VALUE, Byte.MAX_VALUE);
-                    multipliedDeltaX = clamp(multipliedDeltaX, Byte.MIN_VALUE, Byte.MAX_VALUE);
-                    multipliedDeltaY = clamp(multipliedDeltaY, Byte.MIN_VALUE, Byte.MAX_VALUE);
-
-                    // Write "trackpad" report
-                    usbGadgetTrackpadReport.setButtons((byte) 0);
-                    if (touchscreenMultiTouchedDown) {
-                        usbGadgetTrackpadReport.setX((byte) 0);
-                        usbGadgetTrackpadReport.setY((byte) 0);
-
-                        if ((touchscreenWheelMoveCount += Math.abs(deltaY)) >= wheelMoveCountIncrementThreshold) {
-                            touchscreenWheelMoveCount = 0;
-                            usbGadgetTrackpadReport.setWheel((byte) -clamp(deltaY, -1, 1));
-                        } else {
-                            usbGadgetTrackpadReport.setWheel((byte) 0);
-                        }
-                    } else {
-                        usbGadgetTrackpadReport.setX((byte) multipliedDeltaX);
-                        usbGadgetTrackpadReport.setY((byte) multipliedDeltaY);
-                        usbGadgetTrackpadReport.setWheel((byte) 0);
-                    }
-                    writeUSBGadgetTrackpadReport();
-
-                    // Set last touch coordinates to current touch coordinates
-                    if (multipliedDeltaX != 0) {
-                        touchscreenTouchLastX = x;
-                    }
-                    if (multipliedDeltaY != 0) {
-                        touchscreenTouchLastY = y;
-                    }
-
-                    // Trigger non-zero delta touch as needed
-                    if (!touchscreenTouchDownDeltaNonZero && deltaX != 0 && deltaY != 0) {
-                        touchscreenTouchDownDeltaNonZero = true;
-                    }
-
-                    LOGGER.info("Touchpad touch data sent: buttons={} x={} y={} wheel={}\n",
-                            usbGadgetTrackpadReport.getButtons(), usbGadgetTrackpadReport.getX(),
-                            usbGadgetTrackpadReport.getY(), usbGadgetTrackpadReport.getWheel());
-                }
-            } else {
-                // Reset report
-                usbGadgetTrackpadReport.setX((byte) 0);
-                usbGadgetTrackpadReport.setY((byte) 0);
-                usbGadgetTrackpadReport.setWheel((byte) 0);
-
-                // Handle non-zero delta touch down/up (aka button clicks)
-                if (touchscreenTouchDownDeltaNonZero) {
-                    touchscreenTouchDownDeltaNonZero = false;
-                    usbGadgetTrackpadReport.setButtons((byte) 0);
-                } else if (touchscreenLastTouchCount != 0) {
-                    if (touchscreenMultiTouchedDown) {
-                        usbGadgetTrackpadReport.setButtons((byte) (0x01 << 1));
-                        LOGGER.info("Touchpad right-click sent.");
-                    } else {
-                        usbGadgetTrackpadReport.setButtons((byte) 0x01);
-                        LOGGER.info("Touchpad left-click sent.");
-                    }
-                    writeUSBGadgetTrackpadReport();
-                    usbGadgetTrackpadReport.setButtons((byte) 0);
-                }
-
-                // Reset variables
-                touchscreenTouchLastX = -1;
-                touchscreenTouchLastY = -1;
-                touchscreenMultiTouchedDown = false;
-
-                writeUSBGadgetTrackpadReport();
-            }
-
-            touchscreenLastTouchCount = numberOfTouches;
+            // if (!touchscreenMultiTouchedDown) {
+            //     touchscreenMultiTouchedDown = numberOfTouches >= 2;
+            // }
+            //
+            // if (numberOfTouches > 0) {
+            //     int x = ((touchscreenCoordinateData[2] & 0xFF) << 8) | (touchscreenCoordinateData[1] & 0xFF);
+            //     int y = ((touchscreenCoordinateData[4] & 0xFF) << 8) | (touchscreenCoordinateData[3] & 0xFF);
+            //     // Invert axis
+            //     // x = xResolution - x;
+            //     // y = yResolution - y;
+            //     LOGGER.info("Touchscreen touch 0: x={} y={}", x, y);
+            //
+            //     if (touchscreenTouchLastX == -1 || touchscreenTouchLastY == -1) {
+            //         // Set last touch coordinates to current touch coordinates
+            //         touchscreenTouchLastX = x;
+            //         touchscreenTouchLastY = y;
+            //     } else {
+            //         // Calculate deltas
+            //         int deltaX = x - touchscreenTouchLastX;
+            //         int deltaY = y - touchscreenTouchLastY;
+            //         int multipliedDeltaX = (int) Math.round((double) deltaX / 5);
+            //         int multipliedDeltaY = (int) Math.round((double) deltaY / 5);
+            //
+            //         // Clamp deltas
+            //         deltaX = clamp(deltaX, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            //         deltaY = clamp(deltaY, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            //         multipliedDeltaX = clamp(multipliedDeltaX, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            //         multipliedDeltaY = clamp(multipliedDeltaY, Byte.MIN_VALUE, Byte.MAX_VALUE);
+            //
+            //         // Write "trackpad" report
+            //         usbGadgetTrackpadReport.setButtons((byte) 0);
+            //         if (touchscreenMultiTouchedDown) {
+            //             usbGadgetTrackpadReport.setX((byte) 0);
+            //             usbGadgetTrackpadReport.setY((byte) 0);
+            //
+            //             if ((touchscreenWheelMoveCount += Math.abs(deltaY)) >= wheelMoveCountIncrementThreshold) {
+            //                 touchscreenWheelMoveCount = 0;
+            //                 usbGadgetTrackpadReport.setWheel((byte) -clamp(deltaY, -1, 1));
+            //             } else {
+            //                 usbGadgetTrackpadReport.setWheel((byte) 0);
+            //             }
+            //         } else {
+            //             usbGadgetTrackpadReport.setX((byte) multipliedDeltaX);
+            //             usbGadgetTrackpadReport.setY((byte) multipliedDeltaY);
+            //             usbGadgetTrackpadReport.setWheel((byte) 0);
+            //         }
+            //         writeUSBGadgetTrackpadReport();
+            //
+            //         // Set last touch coordinates to current touch coordinates
+            //         if (multipliedDeltaX != 0) {
+            //             touchscreenTouchLastX = x;
+            //         }
+            //         if (multipliedDeltaY != 0) {
+            //             touchscreenTouchLastY = y;
+            //         }
+            //
+            //         // Trigger non-zero delta touch as needed
+            //         if (!touchscreenTouchDownDeltaNonZero && deltaX != 0 && deltaY != 0) {
+            //             touchscreenTouchDownDeltaNonZero = true;
+            //         }
+            //
+            //         LOGGER.info("Touchpad touch data sent: buttons={} x={} y={} wheel={}\n",
+            //                 usbGadgetTrackpadReport.getButtons(), usbGadgetTrackpadReport.getX(),
+            //                 usbGadgetTrackpadReport.getY(), usbGadgetTrackpadReport.getWheel());
+            //     }
+            // } else {
+            //     // Reset report
+            //     usbGadgetTrackpadReport.setX((byte) 0);
+            //     usbGadgetTrackpadReport.setY((byte) 0);
+            //     usbGadgetTrackpadReport.setWheel((byte) 0);
+            //
+            //     // Handle non-zero delta touch down/up (aka button clicks)
+            //     if (touchscreenTouchDownDeltaNonZero) {
+            //         touchscreenTouchDownDeltaNonZero = false;
+            //         usbGadgetTrackpadReport.setButtons((byte) 0);
+            //     } else if (touchscreenLastTouchCount != 0) {
+            //         if (touchscreenMultiTouchedDown) {
+            //             usbGadgetTrackpadReport.setButtons((byte) (0x01 << 1));
+            //             LOGGER.info("Touchpad right-click sent.");
+            //         } else {
+            //             usbGadgetTrackpadReport.setButtons((byte) 0x01);
+            //             usbGadgetTrackpadReport.setKeycode1((byte) 0x17);
+            //             LOGGER.info("Touchpad left-click sent.");
+            //         }
+            //         writeUSBGadgetTrackpadReport();
+            //         usbGadgetTrackpadReport.setButtons((byte) 0);
+            //         usbGadgetTrackpadReport.setKeycode1((byte) 0);
+            //     }
+            //
+            //     // Reset variables
+            //     touchscreenTouchLastX = -1;
+            //     touchscreenTouchLastY = -1;
+            //     touchscreenMultiTouchedDown = false;
+            //
+            //     writeUSBGadgetTrackpadReport();
+            // }
+            //
+            // touchscreenLastTouchCount = numberOfTouches;
         }
     }
 
     private void drawTouches(byte[] touchscreenCoordinateData, int numberOfTouches) {
         // drawLinearGradientBackground();
-        // graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        Platform.runLater(() -> graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight()));
         // Platform.runLater(() -> group.getChildren().clear());
         final int touchDataLength = 8;
         for (int index = 0; index < touchscreenCoordinateData.length; index += touchDataLength) {
@@ -404,21 +455,21 @@ public class USBTrackpadJava extends Application {
                     final double xRatio = 1920d / xResolution;
                     final double yRatio = 515d / yResolution;
                     final double radius = size * 3;
-                    final double drawX = x * xRatio - (1920d / 2d);
-                    final double drawY = y * yRatio - (515d / 2d);
-                    circles[i / touchDataLength].setCenterX(drawX * 2);
-                    circles[i / touchDataLength].setCenterY(drawY * 2);
-                    circles[i / touchDataLength].setRadius(radius);
-                    // LOGGER.info("{} {}", drawX - (1920d/2d), drawY);
+                    final double drawX = x * xRatio /*- (1920d / 2d)*/;
+                    final double drawY = y * yRatio /*- (515d / 2d)*/;
+                    LOGGER.info("{} {}", drawX, drawY);
+                    graphics.setFill(TRANSLUCENT_WHITE);
+                    graphics.fillOval(drawX, drawY, radius * 2, radius * 2);
+                    // circles[i / touchDataLength].setCenterX(drawX * 2);
+                    // circles[i / touchDataLength].setCenterY(drawY * 2);
+                    // circles[i / touchDataLength].setRadius(radius);
                     // group.getChildren().add(new Circle(drawX, drawY, radius, TRANSLUCENT_WHITE));
-                    // graphics.setFill(TRANSLUCENT_WHITE);
-                    // graphics.fillOval(drawX, drawY, radius * 2, radius * 2);
-                    //
-                    // // Draw touchscreen number
-                    // graphics.setFill(Color.WHITE);
-                    // graphics.setTextAlign(TextAlignment.CENTER);
-                    // graphics.setTextBaseline(VPos.BOTTOM);
-                    // graphics.fillText(String.valueOf(id), drawX + radius, drawY - 10);
+
+                    // Draw touchscreen number
+                    graphics.setFill(Color.WHITE);
+                    graphics.setTextAlign(TextAlignment.CENTER);
+                    graphics.setTextBaseline(VPos.BOTTOM);
+                    graphics.fillText(String.valueOf(id), drawX + radius, drawY - 10);
                 });
             }
         }
@@ -440,7 +491,7 @@ public class USBTrackpadJava extends Application {
         try {
             LOGGER.info("Stopping I2C interface...");
             try {
-                jniFunctions.i2cStop();
+                i2cStop();
             } catch (Exception exception) {
                 exception.printStackTrace();
             }

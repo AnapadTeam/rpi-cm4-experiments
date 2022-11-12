@@ -7,8 +7,6 @@ import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -16,9 +14,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.anapad.rpicm4experiments.util.BitUtil;
 
-import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cReadRegisterBytes;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cRegisterBitGet;
@@ -29,7 +25,6 @@ import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStart;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cStop;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteByte;
 import static tech.anapad.rpicm4experiments.jni.JNIFunctions.i2cWriteRegisterByte;
-import static tech.anapad.rpicm4experiments.util.BitUtil.setBit;
 
 /**
  * {@link JavaExperiments} is the main class for testing the LRA haptics via the DRV5605L using the RPi CM4 with Java.
@@ -48,6 +43,8 @@ public class JavaExperiments extends Application {
     private static final short I2C_NAU7802_ADDRESS = 0x2A;
 
     private static final short I2C_TCA9548A_ADDRESS = 0x70;
+
+    private static final short I2C_TCA9544A_ADDRESS = 0x70;
 
     private boolean runLoop;
     private Canvas canvas;
@@ -76,15 +73,15 @@ public class JavaExperiments extends Application {
         canvas = new Canvas(1920, 515);
         graphics = canvas.getGraphicsContext2D();
 
-        final NumberAxis xAxis = new NumberAxis();
-        final NumberAxis yAxis = new NumberAxis();
-        series = new XYChart.Series<>();
-        final LineChart<Number, Number> lineChart = new LineChart<>(xAxis, yAxis);
-        lineChart.getData().add(series);
-        lineChart.setTitle("ADC Values");
+        // final NumberAxis xAxis = new NumberAxis();
+        // final NumberAxis yAxis = new NumberAxis();
+        // series = new XYChart.Series<>();
+        // final LineChart<Number, Number> lineChart = new LineChart<>(xAxis, yAxis);
+        // lineChart.getData().add(series);
+        // lineChart.setTitle("ADC Values");
 
-        Scene scene = new Scene(new StackPane(lineChart), 1920, 515);
-        scene.setFill(Color.WHITE);
+        Scene scene = new Scene(new StackPane(canvas), 1920, 515);
+        scene.setFill(Color.BLACK);
         scene.setCursor(Cursor.NONE);
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -98,6 +95,7 @@ public class JavaExperiments extends Application {
         setupExperimentDRV2605();
         // setupExperimentAnalog();
         // setupExperimentAnalogMultiplexer();
+        // setupExperimentLoadSurfaces();
         LOGGER.info("Set up experiment.");
 
         LOGGER.info("Started");
@@ -108,6 +106,7 @@ public class JavaExperiments extends Application {
                 runLoop = true;
                 // touchscreenReadLoop();
                 // analogExperimentLoop();
+                // experimentLoadSurfacesLoop();
             } catch (Exception exception) {
                 LOGGER.error("Error while running!", exception);
                 try {
@@ -336,6 +335,69 @@ public class JavaExperiments extends Application {
 
     //
     // END Analog multiplexer experiment
+    //
+
+    //
+    // START Load surfaces experiment
+    //
+
+    private void setupExperimentLoadSurfaces() throws Exception {
+        i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b0000_0100);
+        setupExperimentAnalog();
+        i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b0000_0101);
+        setupExperimentAnalog();
+        i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b0000_0110);
+        setupExperimentAnalog();
+        i2cWriteByte(I2C_TCA9548A_ADDRESS, (byte) 0b0000_0111);
+        setupExperimentAnalog();
+    }
+
+    private static final double LOAD_SURFACE_MAX_VALUE = Math.pow(2, 24) / 2;
+
+    private void experimentLoadSurfacesLoop() throws Exception {
+        while (runLoop) {
+            final double loadSurface1 = getLoadSurfaceValue((byte) 0b0000_0100);
+            final double loadSurface2 = getLoadSurfaceValue((byte) 0b0000_0101);
+            final double loadSurface3 = getLoadSurfaceValue((byte) 0b0000_0110);
+            final double loadSurface4 = getLoadSurfaceValue((byte) 0b0000_0111);
+            LOGGER.info("LS1: {}, LS2: {}, LS3: {}, LS4: {}", loadSurface1, loadSurface2, loadSurface3, loadSurface4);
+            Platform.runLater(() -> {
+                graphics.setFill(Color.BLACK);
+                graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                graphics.setFill(Color.LIMEGREEN);
+                // LS1
+                graphics.fillRect(1920d / 4d * 3d, 515d / 4d, 50d,
+                        (loadSurface1 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                // LS2
+                graphics.fillRect(1920d / 4d, 515d / 4d, 50d,
+                        (loadSurface2 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                // LS3
+                graphics.fillRect(1920d / 4d * 3d, 515d / 4d * 3d, 50d,
+                        (loadSurface3 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                // LS4
+                graphics.fillRect(1920d / 4d, 515d / 4d * 3d, 50d,
+                        (loadSurface4 / LOAD_SURFACE_MAX_VALUE) * 250d);
+            });
+        }
+    }
+
+    private double getLoadSurfaceValue(byte i2cMultiplexerChannel) throws Exception {
+        i2cWriteByte(I2C_TCA9548A_ADDRESS, i2cMultiplexerChannel);
+        final int samples = 10;
+        double sum = 0;
+        for (int i = 0; i < samples; i++) {
+            while (!i2cRegisterBitGet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 5)) {}
+            byte[] adcData = i2cReadRegisterBytes(I2C_NAU7802_ADDRESS, (byte) 0x12, 3, true);
+            int adcValue = (adcData[0] & 0xFF) << 16 | (adcData[1] & 0xFF) << 8 | (adcData[2] & 0xFF);
+            adcValue = adcValue << 8;
+            adcValue = adcValue >> 8;
+            sum += adcValue;
+        }
+        return Math.abs(sum / samples);
+    }
+
+    //
+    // END Load surfaces experiment
     //
 
     @Override

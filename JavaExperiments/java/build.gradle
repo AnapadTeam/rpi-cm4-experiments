@@ -1,15 +1,15 @@
 import java.lang.reflect.Field
 
 plugins {
-    id 'java'
-    id 'application'
+    id "java"
+    id "application"
 
-    // For JavaFX
-    id 'org.openjfx.javafxplugin' version '0.0.13'
+    // JavaFX plugin
+    id "org.openjfx.javafxplugin" version "0.0.13"
 }
 
-group 'tech.anapad.rpicm4experiments'
-version '1.0-SNAPSHOT'
+group "tech.anapad.rpicm4experiments"
+version "1.0-SNAPSHOT"
 
 sourceCompatibility = 14
 targetCompatibility = 14
@@ -20,16 +20,16 @@ repositories {
 
 dependencies {
     // Logging framework
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.36'
+    implementation group: "org.slf4j", name: "slf4j-api", version: "1.7.36"
 
     // Logging implementation
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.11'
+    implementation group: "ch.qos.logback", name: "logback-classic", version: "1.2.11"
 }
 
 application {
     // Define the main class for the application.
-    mainClass = 'tech.anapad.rpicm4experiments.JavaExperiments'
-    mainModule = 'JavaExperiments'
+    mainClass = "tech.anapad.rpicm4experiments.JavaExperiments"
+    mainModule = "JavaExperiments"
 }
 
 applicationDefaultJvmArgs = ["-Dprism.verbose=true", "-Dembedded=monocle", "-Dglass.platform=Monocle", "-Dmonocle.platform=EGL",

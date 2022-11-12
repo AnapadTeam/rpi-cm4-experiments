@@ -12,46 +12,60 @@ extern "C" {
  * Method:    i2cStart
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cStart(JNIEnv*, jobject);
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cStart(JNIEnv*, jclass);
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
  * Method:    i2cStop
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cStop(JNIEnv*, jobject);
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cStop(JNIEnv*, jclass);
+
+/*
+ * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
+ * Method:    i2cWriteByte
+ * Signature: (SB)V
+ */
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteByte(JNIEnv*, jclass, jshort, jbyte);
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
  * Method:    i2cWriteRegisterByte
- * Signature: (SSB)V
+ * Signature: (SSBZ)V
  */
-JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteRegisterByte(JNIEnv*, jobject,
-        jshort, jshort, jbyte);
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteRegisterByte(JNIEnv*, jclass, jshort,
+        jshort, jbyte, jboolean);
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
  * Method:    i2cWriteRegisterBytes
- * Signature: (SS[B)V
+ * Signature: (SS[BZ)V
  */
-JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteRegisterBytes(JNIEnv*, jobject,
-        jshort, jshort, jbyteArray);
+JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cWriteRegisterBytes(JNIEnv*, jclass,
+        jshort, jshort, jbyteArray, jboolean);
+
+/*
+ * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
+ * Method:    i2cReadByte
+ * Signature: (S)B
+ */
+JNIEXPORT jbyte JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadByte(JNIEnv*, jclass, jshort);
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
  * Method:    i2cReadRegisterByte
- * Signature: (SS)B
+ * Signature: (SSZ)B
  */
-JNIEXPORT jbyte JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadRegisterByte(JNIEnv*, jobject,
-        jshort, jshort);
+JNIEXPORT jbyte JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadRegisterByte(JNIEnv*, jclass, jshort,
+        jshort, jboolean);
 
 /*
  * Class:     tech_anapad_rpicm4experiments_jni_JNIFunctions
  * Method:    i2cReadRegisterBytes
- * Signature: (SSI)[B
+ * Signature: (SSIZ)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadRegisterBytes(JNIEnv*, jobject,
-        jshort, jshort, jint);
+JNIEXPORT jbyteArray JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cReadRegisterBytes(JNIEnv*, jclass,
+        jshort, jshort, jint, jboolean);
 
 #ifdef __cplusplus
 }
