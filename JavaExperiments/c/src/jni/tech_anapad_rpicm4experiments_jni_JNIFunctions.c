@@ -11,7 +11,7 @@
 int32_t i2c_dev_fd = -1;
 
 JNIEXPORT void JNICALL Java_tech_anapad_rpicm4experiments_jni_JNIFunctions_i2cStart(JNIEnv* env, jobject object) {
-    i2c_dev_fd = open("/dev/i2c-4", O_RDWR);
+    i2c_dev_fd = open("/dev/i2c-1", O_RDWR);
     if (i2c_dev_fd < 0) {
         (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), "Could not open I2C device!");
     }

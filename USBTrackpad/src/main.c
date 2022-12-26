@@ -89,6 +89,7 @@ int32_t usb_gadget_trackpad_create() {
             "0x0104")); // Multifunction Composite Gadget
     CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "bcdDevice", "0x0100")); // v1.0.0
     CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "bcdUSB", "0x0200")); // USB2
+    CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_PATH "max_speed", "full-speed")); // USB Full-Speed 12Mb/s
 
     CHECK(create_directory_path(USB_GADGET_TRACKPAD_STRINGS_PATH));
     CHECK(write_file_with_string_contents(USB_GADGET_TRACKPAD_STRINGS_PATH "serialnumber", "a1b2c3d4e5"));
@@ -325,17 +326,17 @@ after_run_loop:
 }
 
 int32_t main() {
-//     write_gt9110_configuration();
+     write_gt9110_configuration();
 
-    if (usb_gadget_trackpad_create()) {
-        usb_gadget_trackpad_remove();
-        return -1;
-    }
-
-    if (trackpad_control_loop()) {
-        return -1;
-    }
-
-    usb_gadget_trackpad_remove();
+//    if (usb_gadget_trackpad_create()) {
+//        usb_gadget_trackpad_remove();
+//        return -1;
+//    }
+//
+//    if (trackpad_control_loop()) {
+//        return -1;
+//    }
+//
+//    usb_gadget_trackpad_remove();
     printf("Removed USB HID mouse gadget.\n");
 }

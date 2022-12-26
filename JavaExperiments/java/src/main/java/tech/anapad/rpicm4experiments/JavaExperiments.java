@@ -92,10 +92,10 @@ public class JavaExperiments extends Application {
         LOGGER.info("Started I2C interface.");
 
         LOGGER.info("Setting up experiment...");
-        setupExperimentDRV2605();
+        // setupExperimentDRV2605();
         // setupExperimentAnalog();
         // setupExperimentAnalogMultiplexer();
-        // setupExperimentLoadSurfaces();
+        setupExperimentLoadSurfaces();
         LOGGER.info("Set up experiment.");
 
         LOGGER.info("Started");
@@ -106,7 +106,7 @@ public class JavaExperiments extends Application {
                 runLoop = true;
                 // touchscreenReadLoop();
                 // analogExperimentLoop();
-                // experimentLoadSurfacesLoop();
+                experimentLoadSurfacesLoop();
             } catch (Exception exception) {
                 LOGGER.error("Error while running!", exception);
                 try {
@@ -265,7 +265,7 @@ public class JavaExperiments extends Application {
 
         // Configure chip
         i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x01, true, 0b111, 2, 0); // Gain = x128
-        i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x01, true, 0b101, 5, 3); // LDO = 3.0V
+        i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x01, true, 0b101, 5, 3); // LDO = 3.3V
         i2cRegisterBitSet(I2C_NAU7802_ADDRESS, (byte) 0x00, true, 7); // AVDDS
         i2cRegisterBitsSet(I2C_NAU7802_ADDRESS, (byte) 0x02, true, 0b111, 6, 4); // Sample rate = 320 sps
 
@@ -356,10 +356,10 @@ public class JavaExperiments extends Application {
 
     private void experimentLoadSurfacesLoop() throws Exception {
         while (runLoop) {
-            final double loadSurface1 = getLoadSurfaceValue((byte) 0b0000_0100);
-            final double loadSurface2 = getLoadSurfaceValue((byte) 0b0000_0101);
-            final double loadSurface3 = getLoadSurfaceValue((byte) 0b0000_0110);
-            final double loadSurface4 = getLoadSurfaceValue((byte) 0b0000_0111);
+            final double loadSurface3 = getLoadSurfaceValue((byte) 0b0000_0100);
+            final double loadSurface4 = getLoadSurfaceValue((byte) 0b0000_0101);
+            final double loadSurface1 = getLoadSurfaceValue((byte) 0b0000_0110);
+            final double loadSurface2 = getLoadSurfaceValue((byte) 0b0000_0111);
             LOGGER.info("LS1: {}, LS2: {}, LS3: {}, LS4: {}", loadSurface1, loadSurface2, loadSurface3, loadSurface4);
             Platform.runLater(() -> {
                 graphics.setFill(Color.BLACK);
@@ -367,16 +367,16 @@ public class JavaExperiments extends Application {
                 graphics.setFill(Color.LIMEGREEN);
                 // LS1
                 graphics.fillRect(1920d / 4d * 3d, 515d / 4d, 50d,
-                        (loadSurface1 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                        (loadSurface1 / LOAD_SURFACE_MAX_VALUE) * 150d);
                 // LS2
                 graphics.fillRect(1920d / 4d, 515d / 4d, 50d,
-                        (loadSurface2 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                        (loadSurface2 / LOAD_SURFACE_MAX_VALUE) * 150d);
                 // LS3
                 graphics.fillRect(1920d / 4d * 3d, 515d / 4d * 3d, 50d,
-                        (loadSurface3 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                        (loadSurface3 / LOAD_SURFACE_MAX_VALUE) * 150d);
                 // LS4
                 graphics.fillRect(1920d / 4d, 515d / 4d * 3d, 50d,
-                        (loadSurface4 / LOAD_SURFACE_MAX_VALUE) * 250d);
+                        (loadSurface4 / LOAD_SURFACE_MAX_VALUE) * 150d);
             });
         }
     }
